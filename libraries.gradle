@@ -1,7 +1,7 @@
 ext {
     springVersion = "4.2.4.RELEASE"
     fastJsonVersion = "0.33"
-    jacksonJsonVersion = "2.7.1"
+    jacksonJsonVersion = "2.6.5"
     slf4jVersion = "1.7.16"
 
     junitVersion = "4.12"

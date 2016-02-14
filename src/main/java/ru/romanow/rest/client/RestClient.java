@@ -27,11 +27,11 @@ public class RestClient {
     }
 
     public <REQ> PostRequestBuilder<REQ> post(String url, Class<REQ> requestClass) {
-        return new PostRequestBuilder<REQ>(url, requestClass);
+        return new PostRequestBuilder<>(url, requestClass);
     }
 
     public <REQ> GetRequestBuilder<REQ> get(String url, Class<REQ> requestClass) {
-        return new GetRequestBuilder<REQ>(url, requestClass);
+        return new GetRequestBuilder<>(url, requestClass);
     }
 
     public abstract class RequestBuilder<REQ> {
