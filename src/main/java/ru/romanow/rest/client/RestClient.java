@@ -6,9 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
-import ru.romanow.rest.client.exceptions.RestResponseException;
 
-import java.lang.reflect.Constructor;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -74,19 +72,6 @@ public class RestClient {
             }
 
             return Optional.empty();
-        }
-
-        private <E extends RestResponseException> E buildRestException(
-                HttpStatusCodeException exception, Class<E> exceptionClass) {
-            try {
-                Constructor<E> constructor = exceptionClass
-                        .getConstructor(Integer.class, String.class, String.class);
-                return constructor.newInstance(exception.getStatusCode().value(),
-                                               exception.getStatusText(),
-                                               exception.getResponseBodyAsString());
-            } catch (ReflectiveOperationException e) {
-                throw new RuntimeException(e);
-            }
         }
 
         protected abstract ResponseEntity<REQ> makeRequest();

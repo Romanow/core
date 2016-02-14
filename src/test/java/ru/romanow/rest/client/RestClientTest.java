@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 import ru.romanow.rest.client.configuration.TestServerConfiguration;
 import ru.romanow.rest.client.model.TestAuthRequest;
@@ -21,8 +22,7 @@ import java.util.Optional;
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
 /**
  * Created by ronin on 12.02.16
@@ -59,6 +59,24 @@ public class RestClientTest {
 
         assertTrue(result.isPresent());
         assertTrue(result.get());
+    }
+
+    @Test
+    public void testInternalError() {
+        String url = "/error";
+        server.expect(requestTo(url))
+              .andExpect(method(HttpMethod.GET))
+              .andRespond(withServerError());
+
+        try {
+            restClient.get(url, Boolean.class)
+                      .addExceptionMapping(HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                                           RuntimeException::new)
+                      .make();
+        } catch (RuntimeException exception) {
+            assertEquals(HttpServerErrorException.class, exception.getCause().getClass());
+        }
+        server.verify();
     }
 
     @Test
