@@ -3,13 +3,13 @@ package ru.romanow.rest.client.model;
 /**
  * Created by ronin on 13.02.16
  */
-public class TestAuthRequest {
+public class AuthRequest {
     private String login;
     private String password;
 
-    public TestAuthRequest() {}
+    public AuthRequest() {}
 
-    public TestAuthRequest(String login, String password) {
+    public AuthRequest(String login, String password) {
         this.login = login;
         this.password = password;
     }

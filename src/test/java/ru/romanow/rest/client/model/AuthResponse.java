@@ -3,14 +3,14 @@ package ru.romanow.rest.client.model;
 /**
  * Created by ronin on 13.02.16
  */
-public class TestAuthResponse {
+public class AuthResponse {
     private String uin;
     private Long expiredIn;
     private Boolean active;
 
-    public TestAuthResponse() {}
+    public AuthResponse() {}
 
-    public TestAuthResponse(String uin, Long expiredIn, Boolean active) {
+    public AuthResponse(String uin, Long expiredIn, Boolean active) {
         this.uin = uin;
         this.expiredIn = expiredIn;
         this.active = active;

@@ -11,11 +11,14 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import ru.romanow.rest.client.configuration.TestServerConfiguration;
-import ru.romanow.rest.client.model.TestAuthRequest;
-import ru.romanow.rest.client.model.TestAuthResponse;
+import ru.romanow.rest.client.model.AuthRequest;
+import ru.romanow.rest.client.model.AuthResponse;
+import ru.romanow.rest.client.model.SimpleResponse;
 
 import java.util.Optional;
 
@@ -62,7 +65,7 @@ public class RestClientTest {
     }
 
     @Test
-    public void testInternalError() {
+    public void testInternalErrorMapping() {
         String url = "/error";
         server.expect(requestTo(url))
               .andExpect(method(HttpMethod.GET))
@@ -80,18 +83,54 @@ public class RestClientTest {
     }
 
     @Test
+    public void testBadRequestThrowing() {
+        String url = "/error";
+        server.expect(requestTo(url))
+              .andExpect(method(HttpMethod.GET))
+              .andRespond(withBadRequest());
+
+        try {
+            restClient.get(url, Boolean.class).make();
+        } catch (RestClientException exception) {
+            assertEquals(HttpClientErrorException.class, exception.getClass());
+        }
+        server.verify();
+    }
+
+    @Test
+    public void testInternalErrorSuppress() {
+        String url = "/error";
+        server.expect(requestTo(url))
+              .andExpect(method(HttpMethod.GET))
+              .andRespond(withServerError());
+
+        final String message = "test";
+        Optional<SimpleResponse> response =
+                restClient.get(url, SimpleResponse.class)
+                          .processServerExceptions(false)
+                          .processServerExceptions(false)
+                          .defaultResponse(Optional.of(new SimpleResponse(message)))
+                          .make();
+
+        server.verify();
+
+        assertTrue(response.isPresent());
+        assertEquals(message, response.get().getMessage());
+    }
+
+    @Test
     public void testPostSuccess() {
         String url = "/auth";
         String login = "ronin";
         String password = "qwerty";
 
-        TestAuthRequest request =
-                new TestAuthRequest(login, password);
+        AuthRequest request =
+                new AuthRequest(login, password);
 
         String uin = "123";
         Long expiredIn = 123L;
-        TestAuthResponse response =
-                new TestAuthResponse(uin, expiredIn, true);
+        AuthResponse response =
+                new AuthResponse(uin, expiredIn, true);
 
         server.expect(requestTo(url))
               .andExpect(content().string(JsonFactory.toJson(request)))
@@ -99,15 +138,15 @@ public class RestClientTest {
               .andExpect(method(HttpMethod.POST))
               .andRespond(withSuccess(JsonFactory.toJson(response), MediaType.APPLICATION_JSON_UTF8));
 
-        Optional<TestAuthResponse> result =
-                restClient.post(url, TestAuthResponse.class)
+        Optional<AuthResponse> result =
+                restClient.post(url, AuthResponse.class)
                           .requestBody(request)
                           .make();
 
         server.verify();
 
         assertTrue(result.isPresent());
-        TestAuthResponse authResponse = result.get();
+        AuthResponse authResponse = result.get();
         assertTrue(authResponse.getActive());
         assertEquals(uin, authResponse.getUin());
         assertEquals(expiredIn, authResponse.getExpiredIn());
