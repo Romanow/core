@@ -2,6 +2,7 @@ package ru.romanow.rest.client;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
@@ -35,11 +36,20 @@ public class RestClient {
     public abstract class RequestBuilder<REQ> {
         protected String url;
         protected Class<REQ> responseType;
+        protected boolean processClientExceptions;
+        protected boolean processServerExceptions;
+        protected boolean processResourceExceptions;
+        protected Optional<REQ> defaultResponse;
+        protected Function<ResourceAccessException, ? extends RuntimeException> resourceExceptionMapper;
         protected Map<Integer, Function<HttpStatusCodeException, ? extends RuntimeException>> exceptionMapping;
 
         public RequestBuilder(String url, Class<REQ> responseType) {
             this.url = url;
             this.responseType = responseType;
+            this.processClientExceptions = true;
+            this.processServerExceptions = true;
+            this.processResourceExceptions = true;
+            this.defaultResponse = Optional.<REQ>empty();
             this.exceptionMapping = new HashMap<>();
         }
 
@@ -50,6 +60,32 @@ public class RestClient {
             return this;
         }
 
+        public RequestBuilder<REQ> processClientExceptions(boolean processClientExceptions) {
+            this.processClientExceptions = processClientExceptions;
+            return this;
+        }
+
+        public RequestBuilder<REQ> processServerExceptions(boolean processServerExceptions) {
+            this.processServerExceptions = processServerExceptions;
+            return this;
+        }
+
+        public RequestBuilder<REQ> setProcessResourceExceptions(boolean processResourceExceptions) {
+            this.processResourceExceptions = processResourceExceptions;
+            return this;
+        }
+
+        public RequestBuilder<REQ> defaultResponse(Optional<REQ> defaultResponse) {
+            this.defaultResponse = defaultResponse;
+            return this;
+        }
+
+        public RequestBuilder<REQ> resourceExceptionMapper(
+                Function<ResourceAccessException, ? extends RuntimeException> resourceExceptionMapper) {
+            this.resourceExceptionMapper = resourceExceptionMapper;
+            return this;
+        }
+
         public Optional<REQ> make() {
             try {
                 ResponseEntity<REQ> response = makeRequest();
@@ -57,21 +93,30 @@ public class RestClient {
                     return Optional.ofNullable(response.getBody());
                 }
             } catch (HttpStatusCodeException exception) {
-                Integer statusCode = exception.getStatusCode().value();
-                logger.info("Client return with code {}", statusCode);
-                if (exceptionMapping.containsKey(statusCode)) {
+                HttpStatus statusCode = exception.getStatusCode();
+                logger.warn("Client return with code {}", statusCode);
+                if (exceptionMapping.containsKey(statusCode.value())) {
                     Function<HttpStatusCodeException, ? extends RuntimeException> mapper =
-                            exceptionMapping.get(statusCode);
+                            exceptionMapping.get(statusCode.value());
                     throw mapper.apply(exception);
                 }
 
-                throw exception;
+                if (statusCode.is4xxClientError() && processClientExceptions ||
+                    statusCode.is5xxServerError() && processServerExceptions) {
+                    throw exception;
+                }
             } catch (ResourceAccessException exception) {
-                logger.error("I/O exception while processing the request", exception);
-                throw exception;
+                logger.warn("I/O exception while processing the request: {}", exception.getMessage());
+                if (resourceExceptionMapper != null) {
+                    throw resourceExceptionMapper.apply(exception);
+                }
+
+                if (processResourceExceptions) {
+                    throw exception;
+                }
             }
 
-            return Optional.empty();
+            return defaultResponse;
         }
 
         protected abstract ResponseEntity<REQ> makeRequest();
