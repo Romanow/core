@@ -1,6 +1,7 @@
-package ru.romanow.rest.client;
+package ru.romanow.core.rest.client;
 
-import org.boon.json.JsonFactory;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -15,10 +16,11 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-import ru.romanow.rest.client.configuration.TestServerConfiguration;
-import ru.romanow.rest.client.model.AuthRequest;
-import ru.romanow.rest.client.model.AuthResponse;
-import ru.romanow.rest.client.model.SimpleResponse;
+import ru.romanow.core.rest.client.client.RestClient;
+import ru.romanow.core.rest.client.configuration.TestServerConfiguration;
+import ru.romanow.core.rest.client.model.AuthRequest;
+import ru.romanow.core.rest.client.model.AuthResponse;
+import ru.romanow.core.rest.client.model.SimpleResponse;
 
 import java.util.Optional;
 
@@ -39,11 +41,13 @@ public class RestClientTest {
 
     private MockRestServiceServer server;
     private RestClient restClient;
+    private Gson gson;
 
     @Before
     public void init() {
         server = MockRestServiceServer.createServer(restTemplate);
         restClient = new RestClient(restTemplate);
+        gson = new GsonBuilder().create();
     }
 
     @Test
@@ -133,10 +137,10 @@ public class RestClientTest {
                 new AuthResponse(uin, expiredIn, true);
 
         server.expect(requestTo(url))
-              .andExpect(content().string(JsonFactory.toJson(request)))
+              .andExpect(content().string(gson.toJson(request)))
               .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8))
               .andExpect(method(HttpMethod.POST))
-              .andRespond(withSuccess(JsonFactory.toJson(response), MediaType.APPLICATION_JSON_UTF8));
+              .andRespond(withSuccess(gson.toJson(response), MediaType.APPLICATION_JSON_UTF8));
 
         Optional<AuthResponse> result =
                 restClient.post(url, AuthResponse.class)

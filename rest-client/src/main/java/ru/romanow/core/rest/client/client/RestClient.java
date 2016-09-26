@@ -1,4 +1,4 @@
-package ru.romanow.rest.client;
+package ru.romanow.core.rest.client.client;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,7 +102,7 @@ public class RestClient {
                 }
 
                 if (statusCode.is4xxClientError() && processClientExceptions ||
-                    statusCode.is5xxServerError() && processServerExceptions) {
+                        statusCode.is5xxServerError() && processServerExceptions) {
                     throw exception;
                 }
             } catch (ResourceAccessException exception) {

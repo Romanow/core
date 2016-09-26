@@ -1,35 +1,65 @@
-apply plugin: 'java'
-apply plugin: 'idea'
-apply from: 'libraries.gradle'
-
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
-
-repositories {
-    mavenCentral()
+task wrapper(type: Wrapper) {
+    gradleVersion = "2.14"
 }
 
-configurations {
-    providedRuntime
-}
+configure(subprojects) { project ->
+    apply plugin: 'java'
+    apply plugin: 'idea'
+    apply plugin: 'maven'
 
-idea {
-    module {
-        downloadJavadoc = true
-        downloadSources = true
+    buildDir = "build"
+    group 'ru.romanow.core'
+
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+
+    idea {
+        module {
+            downloadJavadoc = true
+            downloadSources = true
+        }
+    }
+
+    repositories {
+        mavenCentral()
+    }
+
+    configurations {
+        providedRuntime
     }
 }
 
-dependencies {
-    compile "org.springframework:spring-core:${springVersion}"
-    compile "org.springframework:spring-web:${springVersion}"
-    compile "io.fastjson:boon:${fastJsonVersion}"
-    compile "com.fasterxml.jackson.core:jackson-core:${jacksonJsonVersion}"
-    compile "com.fasterxml.jackson.core:jackson-databind:${jacksonJsonVersion}"
-    compile "com.fasterxml.jackson.core:jackson-annotations:${jacksonJsonVersion}"
-    compile "org.slf4j:slf4j-simple:${slf4jVersion}"
+project("rest-client") {
+    apply from: '../libraries.gradle'
 
-    testCompile "junit:junit:${junitVersion}"
-    testCompile "org.mockito:mockito-all:${mockitoVersion}"
-    testCompile "org.springframework:spring-test:${springVersion}"
+    version = "${restClientVersion}"
+
+    dependencies {
+        compile "org.springframework:spring-core:${springVersion}"
+        compile "org.springframework:spring-web:${springVersion}"
+
+        compile "com.google.code.gson:gson:${gsonVersion}"
+
+        compile "org.slf4j:slf4j-simple:${slf4jVersion}"
+
+        testCompile "junit:junit:${junitVersion}"
+        testCompile "org.mockito:mockito-all:${mockitoVersion}"
+        testCompile "org.springframework:spring-test:${springVersion}"
+    }
+}
+
+project("commons") {
+    apply from: '../libraries.gradle'
+
+    version = "${commonsVersion}"
+
+    dependencies {
+        compile "org.springframework:spring-context:${springVersion}"
+        compile "org.springframework:spring-aspects:${springVersion}"
+
+        compile "com.google.code.gson:gson:${gsonVersion}"
+        compile "com.google.guava:guava:${guavaVersion}"
+
+        compile "org.slf4j:slf4j-simple:${slf4jVersion}"
+    }
 }

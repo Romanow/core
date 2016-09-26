@@ -1,4 +1,4 @@
-package ru.romanow.rest.client.model;
+package ru.romanow.core.rest.client.model;
 
 /**
  * Created by ronin on 13.02.16

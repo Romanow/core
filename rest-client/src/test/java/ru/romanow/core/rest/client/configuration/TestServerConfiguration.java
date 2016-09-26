@@ -1,4 +1,4 @@
-package ru.romanow.rest.client.configuration;
+package ru.romanow.core.rest.client.configuration;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
