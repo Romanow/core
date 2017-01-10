@@ -1,6 +1,7 @@
 package ru.romanow.core.commons.annotations;
 
 import org.aspectj.lang.JoinPoint;
+import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.reflect.MethodSignature;
@@ -20,7 +21,7 @@ import static ru.romanow.core.commons.utils.JsonSerializer.toPrettyJson;
 public class LogRequestAspect {
 
     @Before("@annotations(ru.romanow.core.annotations.LogRequest)")
-    public void logRequest(JoinPoint joinPoint) {
+    public void logRequest(ProceedingJoinPoint joinPoint) {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Method method = signature.getMethod();
         Logger logger = getLogger(method);

@@ -1,3 +1,12 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "io.spring.gradle:dependency-management-plugin:${dependencyManagementVersion}"
+    }
+}
+
 task wrapper(type: Wrapper) {
     gradleVersion = "2.14"
 }
@@ -5,7 +14,8 @@ task wrapper(type: Wrapper) {
 configure(subprojects) { project ->
     apply plugin: 'java'
     apply plugin: 'idea'
-    apply plugin: 'maven'
+    apply plugin: 'io.spring.dependency-management'
+    apply from: '../libraries.gradle'
 
     buildDir = "build"
     group 'ru.romanow.core'
@@ -20,49 +30,50 @@ configure(subprojects) { project ->
         }
     }
 
-    repositories {
-        mavenCentral()
+    dependencyManagement {
+        imports {
+            mavenBom "io.spring.platform:platform-bom:${springPlatformVersion}"
+        }
     }
 
-    configurations {
-        providedRuntime
+    ext['gson.version'] = "${gsonVersion}"
+    ext['guava.version'] = "${guavaVersion}"
+
+    repositories {
+        mavenCentral()
     }
 }
 
 project("rest-client") {
-    apply from: '../libraries.gradle'
-
     version = "${restClientVersion}"
 
     dependencies {
-        compile "org.springframework:spring-core:${springVersion}"
-        compile "org.springframework:spring-web:${springVersion}"
+        compile "org.springframework:spring-core"
+        compile "org.springframework:spring-web"
 
-        compile "com.google.code.gson:gson:${gsonVersion}"
+        compile "com.google.code.gson:gson"
 
-        compile "org.slf4j:slf4j-simple:${slf4jVersion}"
+        compile "org.slf4j:slf4j-simple"
 
-        testCompile "junit:junit:${junitVersion}"
-        testCompile "org.mockito:mockito-all:${mockitoVersion}"
-        testCompile "org.springframework:spring-test:${springVersion}"
+        testCompile "org.springframework.boot:spring-boot-starter-test"
     }
 }
 
 project("commons") {
-    apply from: '../libraries.gradle'
-
     version = "${commonsVersion}"
 
     dependencies {
-        compile "org.springframework:spring-core:${springVersion}"
-        compile "org.springframework:spring-web:${springVersion}"
+        compile "org.springframework:spring-core"
+        compile "org.springframework:spring-web"
 
-        compile "org.springframework:spring-context:${springVersion}"
-        compile "org.springframework:spring-aspects:${springVersion}"
+        compile "org.springframework:spring-context"
+        compile "org.springframework:spring-aspects"
 
-        compile "com.google.code.gson:gson:${gsonVersion}"
-        compile "com.google.guava:guava:${guavaVersion}"
+        compile "com.google.code.gson:gson"
+        compile "com.google.guava:guava"
 
-        compile "org.slf4j:slf4j-simple:${slf4jVersion}"
+        compile "org.slf4j:slf4j-simple"
+
+        testCompile "org.springframework.boot:spring-boot-starter-test"
     }
 }
