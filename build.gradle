@@ -51,9 +51,9 @@ project("rest-client") {
         compile "org.springframework:spring-core"
         compile "org.springframework:spring-web"
 
-        compile "com.google.code.gson:gson"
+        compile "org.springframework.boot:spring-boot-starter-logging"
 
-        compile "org.slf4j:slf4j-simple"
+        compile "com.google.code.gson:gson"
 
         testCompile "org.springframework.boot:spring-boot-starter-test"
     }
@@ -69,10 +69,11 @@ project("commons") {
         compile "org.springframework:spring-context"
         compile "org.springframework:spring-aspects"
 
+        compile "org.springframework.boot:spring-boot-starter-logging"
+
         compile "com.google.code.gson:gson"
         compile "com.google.guava:guava"
-
-        compile "org.slf4j:slf4j-simple"
+        compile "commons-lang:commons-lang"
 
         testCompile "org.springframework.boot:spring-boot-starter-test"
     }
