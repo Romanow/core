@@ -37,12 +37,14 @@ public class LogRequestAspect {
 
     @AfterReturning(value = "@annotation(ru.romanow.core.commons.annotations.LogRequest)", returning = "result")
     public void logResponse(JoinPoint joinPoint, Object result) {
-        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-        Method method = signature.getMethod();
-        Logger logger = getLogger(method);
-        if (logger.isDebugEnabled()) {
-            String endpoint = getEndpoint(joinPoint.getTarget(), method);
-            logger.debug("Returning result for endpoint [{}]:\n{}", endpoint, toPrettyJson(result));
+        if (result != null) {
+            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+            Method method = signature.getMethod();
+            Logger logger = getLogger(method);
+            if (logger.isDebugEnabled()) {
+                String endpoint = getEndpoint(joinPoint.getTarget(), method);
+                logger.debug("Returning result for endpoint [{}]:\n{}", endpoint, toPrettyJson(result));
+            }
         }
     }
 
@@ -69,6 +71,6 @@ public class LogRequestAspect {
         String methodEndpoint = getEndpointPath(methodMapping);
 
         return hasText(classEndpoint) ?
-                classEndpoint + "/" + methodEndpoint : methodEndpoint;
+                classEndpoint + methodEndpoint : methodEndpoint;
     }
 }
