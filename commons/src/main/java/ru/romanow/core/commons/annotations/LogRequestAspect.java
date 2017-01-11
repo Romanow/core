@@ -29,7 +29,9 @@ public class LogRequestAspect {
         if (logger.isDebugEnabled()) {
             String endpoint = getEndpoint(joinPoint.getTarget(), method);
             Object object = AspectHelper.getAnnotatedObject(joinPoint, RequestBody.class);
-            logger.debug("Request for endpoint [{}]:\n{}", endpoint, toPrettyJson(object));
+            if (object != null) {
+                logger.debug("Request for endpoint [{}]:\n{}", endpoint, toPrettyJson(object));
+            }
         }
     }
 
@@ -59,7 +61,10 @@ public class LogRequestAspect {
 
     private String getEndpoint(Object targetClass, Method method) {
         RequestMapping classMapping = targetClass.getClass().getAnnotation(RequestMapping.class);
-        String classEndpoint = getEndpointPath(classMapping);
+        String classEndpoint = null;
+        if (classMapping != null) {
+            classEndpoint = getEndpointPath(classMapping);
+        }
         RequestMapping methodMapping = method.getAnnotation(RequestMapping.class);
         String methodEndpoint = getEndpointPath(methodMapping);
 
