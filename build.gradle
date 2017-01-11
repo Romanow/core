@@ -55,6 +55,8 @@ project("rest-client") {
 
         compile "com.google.code.gson:gson"
 
+        compileOnly "com.google.code.findbugs:jsr305:${findBugsVersion}"
+
         testCompile "org.springframework.boot:spring-boot-starter-test"
     }
 }

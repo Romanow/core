@@ -2,5 +2,5 @@ ext {
     gsonVersion = "2.8.0"
     guavaVersion = "19.0"
 
-    powerMockVersion = "1.6.6"
+    findBugsVersion = "3.0.1"
 }

@@ -16,7 +16,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-import ru.romanow.core.rest.client.client.RestClient;
 import ru.romanow.core.rest.client.configuration.TestServerConfiguration;
 import ru.romanow.core.rest.client.model.AuthRequest;
 import ru.romanow.core.rest.client.model.AuthResponse;
