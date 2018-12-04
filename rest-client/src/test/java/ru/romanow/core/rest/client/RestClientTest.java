@@ -12,6 +12,7 @@ import ru.romanow.core.rest.client.exceptions.CustomException;
 import ru.romanow.core.rest.client.model.AuthRequest;
 import ru.romanow.core.rest.client.model.AuthResponse;
 import ru.romanow.core.rest.client.model.PingResponse;
+import ru.romanow.core.rest.client.model.SimpleResponse;
 
 import java.util.Optional;
 
@@ -42,6 +43,32 @@ public class RestClientTest {
                           .execute();
 
         assertTrue(response.isPresent());
+    }
+
+    @Test
+    public void testGetWithHeaderSuccess() {
+        final String url = format("http://localhost:%d/%s", port, CUSTOM_HEADER);
+        final String param = "test";
+        final Optional<SimpleResponse> response =
+                restClient.get(url, SimpleResponse.class)
+                          .addHeader("X-CUSTOM-HEADER", param)
+                          .execute();
+
+        assertTrue(response.isPresent());
+        assertEquals(param, response.get().getMessage());
+    }
+
+    @Test
+    public void testGetWithParamSuccess() {
+        final String url = format("http://localhost:%d/%s", port, QUERY_PARAM);
+        final String param = "test";
+        final Optional<SimpleResponse> response =
+                restClient.get(url, SimpleResponse.class)
+                          .addParam("query", param)
+                          .execute();
+
+        assertTrue(response.isPresent());
+        assertEquals(param, response.get().getMessage());
     }
 
     @Test
@@ -89,7 +116,7 @@ public class RestClientTest {
         } catch (HttpRestClientException exception) {
             assertEquals(HttpStatus.SC_BAD_REQUEST, exception.getResponseStatus());
             assertNotNull(exception.getBody());
-            assertEquals(toJson(new PingResponse("Bad Request")), exception.getBody());
+            assertEquals(toJson(new SimpleResponse("Bad Request")), exception.getBody());
         }
     }
 
@@ -102,7 +129,7 @@ public class RestClientTest {
                     .addExceptionMapping(HttpStatus.SC_BAD_REQUEST, (ex) -> new CustomException(ex.getBody().toString()))
                     .execute();
         } catch (CustomException exception) {
-            assertEquals(toJson(new PingResponse("Bad Request")), exception.getMessage());
+            assertEquals(toJson(new SimpleResponse("Bad Request")), exception.getMessage());
         }
     }
 
