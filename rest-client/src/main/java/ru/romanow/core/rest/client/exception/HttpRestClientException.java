@@ -8,6 +8,6 @@ public class HttpRestClientException
     }
 
     public HttpRestClientException(int responseStatus, String responseMessage, Object body) {
-        super("Client error " + responseStatus + " - " + responseMessage, responseStatus, responseMessage, body);
+        super("Client error " + responseStatus + ": " + responseMessage, responseStatus, responseMessage, body);
     }
 }

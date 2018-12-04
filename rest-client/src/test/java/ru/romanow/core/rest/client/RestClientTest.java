@@ -1,154 +1,163 @@
 package ru.romanow.core.rest.client;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import org.apache.http.HttpStatus;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
+import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import org.springframework.test.web.client.MockRestServiceServer;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
-import ru.romanow.core.rest.client.configuration.TestServerConfiguration;
+import ru.romanow.core.rest.client.exception.HttpRestClientException;
+import ru.romanow.core.rest.client.exceptions.CustomException;
 import ru.romanow.core.rest.client.model.AuthRequest;
 import ru.romanow.core.rest.client.model.AuthResponse;
-import ru.romanow.core.rest.client.model.SimpleResponse;
+import ru.romanow.core.rest.client.model.PingResponse;
 
 import java.util.Optional;
 
-import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertEquals;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
+import static java.lang.String.format;
+import static org.junit.Assert.*;
+import static ru.romanow.core.rest.client.utils.JsonSerializer.toJson;
+import static ru.romanow.core.rest.client.web.AuthController.*;
 
 @RunWith(SpringJUnit4ClassRunner.class)
-@SpringBootTest(classes = TestServerConfiguration.class)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class RestClientTest {
 
-    @Autowired
-    private RestTemplate restTemplate;
+    @LocalServerPort
+    private int port;
 
-    private MockRestServiceServer server;
     private RestClient restClient;
-    private Gson gson;
 
     @Before
     public void init() {
-        server = MockRestServiceServer.createServer(restTemplate);
-        restClient = new RestClient(restTemplate);
-        gson = new GsonBuilder().create();
+        restClient = new RestClient();
     }
 
     @Test
     public void testGetSuccess() {
-        String url = "/ping";
-        server.expect(requestTo(url))
-              .andExpect(method(HttpMethod.GET))
-              .andRespond(withStatus(HttpStatus.OK)
-                                  .contentType(MediaType.APPLICATION_JSON)
-                                  .body("true"));
-
-        Optional<Boolean> result =
-                restClient.get(url, Boolean.class).make();
-
-        server.verify();
-
-        assertTrue(result.isPresent());
-        assertTrue(result.get());
-    }
-
-    @Test
-    public void testInternalErrorMapping() {
-        String url = "/error";
-        server.expect(requestTo(url))
-              .andExpect(method(HttpMethod.GET))
-              .andRespond(withServerError());
-
-        try {
-            restClient.get(url, Boolean.class)
-                      .addExceptionMapping(HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                                           RuntimeException::new)
-                      .make();
-        } catch (RuntimeException exception) {
-            assertEquals(HttpServerErrorException.class, exception.getCause().getClass());
-        }
-        server.verify();
-    }
-
-    @Test
-    public void testBadRequestThrowing() {
-        String url = "/error";
-        server.expect(requestTo(url))
-              .andExpect(method(HttpMethod.GET))
-              .andRespond(withBadRequest());
-
-        try {
-            restClient.get(url, Boolean.class).make();
-        } catch (RestClientException exception) {
-            assertEquals(HttpClientErrorException.class, exception.getClass());
-        }
-        server.verify();
-    }
-
-    @Test
-    public void testInternalErrorSuppress() {
-        String url = "/error";
-        server.expect(requestTo(url))
-              .andExpect(method(HttpMethod.GET))
-              .andRespond(withServerError());
-
-        final String message = "test";
-        Optional<SimpleResponse> response =
-                restClient.get(url, SimpleResponse.class)
-                          .processServerExceptions(false)
-                          .processServerExceptions(false)
-                          .defaultResponse(Optional.of(new SimpleResponse(message)))
-                          .make();
-
-        server.verify();
+        final String url = format("http://localhost:%d/%s", port, PING);
+        final Optional<PingResponse> response =
+                restClient.get(url, PingResponse.class)
+                          .execute();
 
         assertTrue(response.isPresent());
-        assertEquals(message, response.get().getMessage());
     }
 
     @Test
     public void testPostSuccess() {
-        String url = "/auth";
-        String login = "ronin";
-        String password = "qwerty";
-
-        AuthRequest request =
-                new AuthRequest(login, password);
-
-        String uin = "123";
-        Long expiredIn = 123L;
-        AuthResponse response =
-                new AuthResponse(uin, expiredIn, true);
-
-        server.expect(requestTo(url))
-              .andExpect(content().string(gson.toJson(request)))
-              .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8))
-              .andExpect(method(HttpMethod.POST))
-              .andRespond(withSuccess(gson.toJson(response), MediaType.APPLICATION_JSON_UTF8));
-
-        Optional<AuthResponse> result =
+        final String url = format("http://localhost:%d/%s", port, AUTH);
+        final Optional<AuthResponse> response =
                 restClient.post(url, AuthResponse.class)
-                          .requestBody(request)
-                          .make();
+                          .requestBody(new AuthRequest("ronin", "test"))
+                          .execute();
 
-        server.verify();
-
-        assertTrue(result.isPresent());
-        AuthResponse authResponse = result.get();
-        assertTrue(authResponse.getActive());
-        assertEquals(uin, authResponse.getUin());
-        assertEquals(expiredIn, authResponse.getExpiredIn());
+        assertTrue(response.isPresent());
     }
+
+    @Test
+    public void testClientErrorSuppress() {
+        final String url = format("http://localhost:%d/%s", port, BAD_REQUEST_ERROR);
+        final Optional<Void> response =
+                restClient.get(url, Void.class)
+                          .processClientExceptions(false)
+                          .execute();
+
+        assertFalse(response.isPresent());
+    }
+
+    @Test
+    public void testClientError() {
+        final String url = format("http://localhost:%d/%s", port, BAD_REQUEST_ERROR);
+        try {
+            final Optional<Void> response =
+                    restClient.get(url, Void.class)
+                              .execute();
+        } catch (HttpRestClientException exception) {
+            assertEquals(HttpStatus.SC_BAD_REQUEST, exception.getResponseStatus());
+            assertNull(exception.getBody());
+        }
+    }
+
+    @Test
+    public void testClientErrorWithBody() {
+        final String url = format("http://localhost:%d/%s", port, BAD_REQUEST_ERROR_BODY);
+        try {
+            final Optional<Void> response =
+                    restClient.get(url, Void.class)
+                              .execute();
+        } catch (HttpRestClientException exception) {
+            assertEquals(HttpStatus.SC_BAD_REQUEST, exception.getResponseStatus());
+            assertNotNull(exception.getBody());
+            assertEquals(toJson(new PingResponse("Bad Request")), exception.getBody());
+        }
+    }
+
+    @Test
+    public void testClientErrorWithBodyCustomMapping() {
+        final String url = format("http://localhost:%d/%s", port, BAD_REQUEST_ERROR_BODY);
+        try {
+            final Optional<Void> response = restClient
+                    .get(url, Void.class)
+                    .addExceptionMapping(HttpStatus.SC_BAD_REQUEST, (ex) -> new CustomException(ex.getBody().toString()))
+                    .execute();
+        } catch (CustomException exception) {
+            assertEquals(toJson(new PingResponse("Bad Request")), exception.getMessage());
+        }
+    }
+
+//    @Test
+//    public void testInternalErrorMapping() {
+//        String url = "/error";
+//        server.expect(requestTo(url))
+//              .andExpect(method(HttpMethod.GET))
+//              .andRespond(withServerError());
+//
+//        try {
+//            restClient.get(url, Boolean.class)
+//                      .addExceptionMapping(HttpStatus.INTERNAL_SERVER_ERROR.value(),
+//                                           RuntimeException::new)
+//                      .make();
+//        } catch (RuntimeException exception) {
+//            assertEquals(HttpServerErrorException.class, exception.getCause().getClass());
+//        }
+//        server.verify();
+//    }
+//
+//    @Test
+//    public void testBadRequestThrowing() {
+//        String url = "/error";
+//        server.expect(requestTo(url))
+//              .andExpect(method(HttpMethod.GET))
+//              .andRespond(withBadRequest());
+//
+//        try {
+//            restClient.get(url, Boolean.class).make();
+//        } catch (RestClientException exception) {
+//            assertEquals(HttpClientErrorException.class, exception.getClass());
+//        }
+//        server.verify();
+//    }
+//
+//    @Test
+//    public void testInternalErrorSuppress() {
+//        String url = "/error";
+//        server.expect(requestTo(url))
+//              .andExpect(method(HttpMethod.GET))
+//              .andRespond(withServerError());
+//
+//        final String message = "test";
+//        Optional<PingResponse> response =
+//                restClient.get(url, PingResponse.class)
+//                          .processServerExceptions(false)
+//                          .processServerExceptions(false)
+//                          .defaultResponse(Optional.of(new PingResponse(message)))
+//                          .make();
+//
+//        server.verify();
+//
+//        assertTrue(response.isPresent());
+//        assertEquals(message, response.get().getMessage());
+//    }
+
 }

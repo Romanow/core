@@ -21,7 +21,7 @@ public class JsonSerializer {
         return prettyJson.toJson(object);
     }
 
-    public static <T> T fromJson(@Nonnull String json, @Nonnull Class<T> cls) {
+    public static <T> T fromJson(@Nullable String json, @Nonnull Class<T> cls) {
         return gson.fromJson(json, cls);
     }
 }

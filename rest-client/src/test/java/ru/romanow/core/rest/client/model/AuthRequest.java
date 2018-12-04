@@ -1,21 +1,15 @@
 package ru.romanow.core.rest.client.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+
+@Data
+@Accessors(chain = true)
+@AllArgsConstructor
+@NoArgsConstructor
 public class AuthRequest {
     private String login;
     private String password;
-
-    public AuthRequest() {}
-
-    public AuthRequest(String login, String password) {
-        this.login = login;
-        this.password = password;
-    }
-
-    public String getLogin() {
-        return login;
-    }
-
-    public String getPassword() {
-        return password;
-    }
 }

@@ -36,7 +36,7 @@ configure(subprojects) { project ->
     dependencies {
         compile "org.slf4j:slf4j-api:${slf4jVersion}"
         compile "com.google.code.findbugs:jsr305:${findBugsVersion}"
-        compileOnly "org.projectlombok:lombok:${lombokVersion}"
+        compile "org.projectlombok:lombok:${lombokVersion}"
     }
 }
 
@@ -47,6 +47,7 @@ project("rest-client") {
         compile "org.apache.httpcomponents:httpasyncclient:${apacheHttpClient}"
         compile "com.google.code.gson:gson:${gsonVersion}"
 
+        testCompile "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
         testCompile "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
     }
 }
