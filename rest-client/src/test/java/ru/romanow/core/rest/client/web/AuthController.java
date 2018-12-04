@@ -19,6 +19,7 @@ public class AuthController {
     public static final String BAD_REQUEST_ERROR = "/client-error";
     public static final String BAD_REQUEST_ERROR_BODY = "/error/client/body";
     public static final String BAD_GATEWAY_ERROR = "/error/server";
+    public static final String BAD_GATEWAY_ERROR_BODY = "/error/server/body";
 
     @PostMapping(value = AUTH,
             consumes = MediaType.APPLICATION_JSON_UTF8_VALUE,
@@ -55,4 +56,10 @@ public class AuthController {
     @ResponseStatus(HttpStatus.BAD_GATEWAY)
     @GetMapping(value = BAD_GATEWAY_ERROR)
     public void serverError() {}
+
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    @GetMapping(value = BAD_GATEWAY_ERROR_BODY)
+    public SimpleResponse serverErrorWithBody() {
+        return new SimpleResponse("Bad Gateway");
+    }
 }

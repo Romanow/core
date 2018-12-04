@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import ru.romanow.core.rest.client.exception.HttpRestClientException;
+import ru.romanow.core.rest.client.exception.HttpRestServerException;
 import ru.romanow.core.rest.client.exceptions.CustomException;
 import ru.romanow.core.rest.client.model.AuthRequest;
 import ru.romanow.core.rest.client.model.AuthResponse;
@@ -21,6 +22,14 @@ import static org.junit.Assert.*;
 import static ru.romanow.core.rest.client.utils.JsonSerializer.toJson;
 import static ru.romanow.core.rest.client.web.AuthController.*;
 
+/*
+ TODO
+ 1. retryServerError
+ 2. timeout retry
+ 3. timeout mapping
+ 4. connection error
+ 5. host not found error
+ */
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class RestClientTest {
@@ -130,6 +139,57 @@ public class RestClientTest {
                     .execute();
         } catch (CustomException exception) {
             assertEquals(toJson(new SimpleResponse("Bad Request")), exception.getMessage());
+        }
+    }
+
+    @Test
+    public void testServerErrorSuppress() {
+        final String url = format("http://localhost:%d/%s", port, BAD_GATEWAY_ERROR);
+        final Optional<Void> response =
+                restClient.get(url, Void.class)
+                          .processServerExceptions(false)
+                          .execute();
+
+        assertFalse(response.isPresent());
+    }
+
+    @Test
+    public void testServerError() {
+        final String url = format("http://localhost:%d/%s", port, BAD_GATEWAY_ERROR);
+        try {
+            final Optional<Void> response =
+                    restClient.get(url, Void.class)
+                              .execute();
+        } catch (HttpRestServerException exception) {
+            assertEquals(HttpStatus.SC_BAD_GATEWAY, exception.getResponseStatus());
+            assertNull(exception.getBody());
+        }
+    }
+
+    @Test
+    public void testServerErrorWithBody() {
+        final String url = format("http://localhost:%d/%s", port, BAD_GATEWAY_ERROR_BODY);
+        try {
+            final Optional<Void> response =
+                    restClient.get(url, Void.class)
+                              .execute();
+        } catch (HttpRestServerException exception) {
+            assertEquals(HttpStatus.SC_BAD_GATEWAY, exception.getResponseStatus());
+            assertNotNull(exception.getBody());
+            assertEquals(toJson(new SimpleResponse("Bad Gateway")), exception.getBody());
+        }
+    }
+
+    @Test
+    public void testServerErrorWithBodyCustomMapping() {
+        final String url = format("http://localhost:%d/%s", port, BAD_GATEWAY_ERROR_BODY);
+        try {
+            final Optional<Void> response = restClient
+                    .get(url, Void.class)
+                    .addExceptionMapping(HttpStatus.SC_BAD_GATEWAY, (ex) -> new CustomException(ex.getBody().toString()))
+                    .execute();
+        } catch (CustomException exception) {
+            assertEquals(toJson(new SimpleResponse("Bad Gateway")), exception.getMessage());
         }
     }
 
