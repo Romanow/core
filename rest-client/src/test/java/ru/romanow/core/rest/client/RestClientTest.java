@@ -28,9 +28,6 @@ import static org.junit.Assert.assertEquals;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
-/**
- * Created by ronin on 12.02.16
- */
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringBootTest(classes = TestServerConfiguration.class)
 public class RestClientTest {

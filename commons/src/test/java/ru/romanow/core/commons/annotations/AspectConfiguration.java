@@ -5,9 +5,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Profile;
 
-/**
- * Created by ronin on 10.01.17
- */
 @Profile("aspect-test")
 @Configuration
 @EnableAspectJAutoProxy

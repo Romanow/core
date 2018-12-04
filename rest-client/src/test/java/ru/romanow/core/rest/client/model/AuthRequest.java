@@ -1,8 +1,5 @@
 package ru.romanow.core.rest.client.model;
 
-/**
- * Created by ronin on 13.02.16
- */
 public class AuthRequest {
     private String login;
     private String password;

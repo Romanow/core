@@ -15,9 +15,6 @@ import java.lang.reflect.Method;
 import static org.springframework.util.StringUtils.hasText;
 import static ru.romanow.core.commons.utils.JsonSerializer.toPrettyJson;
 
-/**
- * Created by ronin on 20.09.16
- */
 @Aspect
 public class LogRequestAspect {
 

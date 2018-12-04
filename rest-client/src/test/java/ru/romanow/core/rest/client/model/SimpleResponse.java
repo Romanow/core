@@ -1,9 +1,5 @@
 package ru.romanow.core.rest.client.model;
 
-/**
- * User: romanow
- * Date: 15.02.16
- */
 public class SimpleResponse {
     private String message;
 

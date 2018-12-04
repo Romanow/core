@@ -6,9 +6,6 @@ import org.aspectj.lang.reflect.MethodSignature;
 import java.lang.annotation.Annotation;
 import java.util.stream.Stream;
 
-/**
- * Created by ronin on 10.01.17
- */
 class AspectHelper {
 
     static Object getAnnotatedObject(JoinPoint joinPoint, Class<?> annotationType) {

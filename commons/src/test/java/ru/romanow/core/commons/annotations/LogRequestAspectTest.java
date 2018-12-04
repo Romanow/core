@@ -4,7 +4,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.LoggingEvent;
 import ch.qos.logback.core.Appender;
-import org.apache.commons.lang.RandomStringUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -19,14 +19,11 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.List;
 
-import static org.apache.commons.lang.math.RandomUtils.nextInt;
+import static org.apache.commons.lang3.RandomUtils.nextInt;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-/**
- * Created by ronin on 10.01.17
- */
 @ActiveProfiles("aspect-test")
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = AspectConfiguration.class)
@@ -50,7 +47,7 @@ public class LogRequestAspectTest {
     @Test
     public void testAspectExists() {
         String request = RandomStringUtils.randomAlphanumeric(10);
-        String response = aspectTestClass.requestExists(nextInt(10), request);
+        String response = aspectTestClass.requestExists(nextInt(0, 10), request);
 
         verify(mockAppender, times(2)).doAppend(captorLoggingEvent.capture());
         List<LoggingEvent> values = captorLoggingEvent.getAllValues();
@@ -66,7 +63,7 @@ public class LogRequestAspectTest {
 
     @Test
     public void testAspectAbsent() {
-        String response = aspectTestClass.requestAbsent(nextInt(10));
+        String response = aspectTestClass.requestAbsent(nextInt(0, 10));
         verify(mockAppender, times(1)).doAppend(captorLoggingEvent.capture());
 
         List<LoggingEvent> values = captorLoggingEvent.getAllValues();
@@ -77,7 +74,7 @@ public class LogRequestAspectTest {
 
     @Test
     public void testAspectEmpty() {
-        aspectTestClass.requestEmpty(nextInt(10));
+        aspectTestClass.requestEmpty(nextInt(0, 10));
         verify(mockAppender, times(0)).doAppend(captorLoggingEvent.capture());
     }
 }

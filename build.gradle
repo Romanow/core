@@ -1,20 +1,7 @@
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath "io.spring.gradle:dependency-management-plugin:${dependencyManagementVersion}"
-    }
-}
-
-task wrapper(type: Wrapper) {
-    gradleVersion = "2.14"
-}
-
 configure(subprojects) { project ->
     apply plugin: 'java'
     apply plugin: 'idea'
-    apply plugin: 'io.spring.dependency-management'
+    apply plugin: 'maven-publish'
     apply from: '../libraries.gradle'
 
     buildDir = "build"
@@ -30,17 +17,26 @@ configure(subprojects) { project ->
         }
     }
 
-    dependencyManagement {
-        imports {
-            mavenBom "io.spring.platform:platform-bom:${springPlatformVersion}"
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                from components.java
+            }
         }
     }
 
-    ext['gson.version'] = "${gsonVersion}"
-    ext['guava.version'] = "${guavaVersion}"
+    jar {
+        archiveName =  "${project.name}.jar"
+    }
 
     repositories {
         mavenCentral()
+    }
+    
+    dependencies {
+        compile "org.slf4j:slf4j-api:${slf4jVersion}"
+        compile "com.google.code.findbugs:jsr305:${findBugsVersion}"
+        compileOnly "org.projectlombok:lombok:${lombokVersion}"
     }
 }
 
@@ -48,16 +44,10 @@ project("rest-client") {
     version = "${restClientVersion}"
 
     dependencies {
-        compile "org.springframework:spring-core"
-        compile "org.springframework:spring-web"
+        compile "org.apache.httpcomponents:httpasyncclient:${apacheHttpClient}"
+        compile "com.google.code.gson:gson:${gsonVersion}"
 
-        compile "org.springframework.boot:spring-boot-starter-logging"
-
-        compile "com.google.code.gson:gson"
-
-        compileOnly "com.google.code.findbugs:jsr305:${findBugsVersion}"
-
-        testCompile "org.springframework.boot:spring-boot-starter-test"
+        testCompile "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
     }
 }
 
@@ -65,18 +55,14 @@ project("commons") {
     version = "${commonsVersion}"
 
     dependencies {
-        compile "org.springframework:spring-core"
-        compile "org.springframework:spring-web"
+        compile "org.springframework:spring-web:${springVersion}"
+        compile "org.springframework:spring-context:${springVersion}"
+        compile "org.springframework:spring-aspects:${springVersion}"
 
-        compile "org.springframework:spring-context"
-        compile "org.springframework:spring-aspects"
+        compile "org.apache.commons:commons-lang3:${commonsLangVersion}"
+        compile "com.google.code.gson:gson:${gsonVersion}"
+        compile "com.google.guava:guava:${guavaVersion}"
 
-        compile "org.springframework.boot:spring-boot-starter-logging"
-
-        compile "com.google.code.gson:gson"
-        compile "com.google.guava:guava"
-        compile "commons-lang:commons-lang"
-
-        testCompile "org.springframework.boot:spring-boot-starter-test"
+        testCompile "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
     }
 }

@@ -1,4 +1,4 @@
-package ru.romanow.core.commons.utils;
+package ru.romanow.core.rest.client.utils;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
