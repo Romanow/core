@@ -8,7 +8,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import ru.romanow.core.rest.client.exception.HttpRestClientException;
+import ru.romanow.core.rest.client.exception.HttpRestResourceException;
 import ru.romanow.core.rest.client.exception.HttpRestServerException;
+import ru.romanow.core.rest.client.exception.HttpRestTimeoutException;
 import ru.romanow.core.rest.client.exceptions.CustomException;
 import ru.romanow.core.rest.client.model.AuthRequest;
 import ru.romanow.core.rest.client.model.AuthResponse;
@@ -16,20 +18,14 @@ import ru.romanow.core.rest.client.model.PingResponse;
 import ru.romanow.core.rest.client.model.SimpleResponse;
 
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import static java.lang.String.format;
 import static org.junit.Assert.*;
 import static ru.romanow.core.rest.client.utils.JsonSerializer.toJson;
 import static ru.romanow.core.rest.client.web.AuthController.*;
 
-/*
- TODO
- 1. retryServerError
- 2. timeout retry
- 3. timeout mapping
- 4. connection error
- 5. host not found error
- */
+// TODO stress tests
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class RestClientTest {
@@ -170,8 +166,8 @@ public class RestClientTest {
     public void testServerErrorWithBody() {
         final String url = format("http://localhost:%d/%s", port, BAD_GATEWAY_ERROR_BODY);
         try {
-            final Optional<Void> response =
-                    restClient.get(url, Void.class)
+            final Optional<SimpleResponse> response =
+                    restClient.get(url, SimpleResponse.class)
                               .execute();
         } catch (HttpRestServerException exception) {
             assertEquals(HttpStatus.SC_BAD_GATEWAY, exception.getResponseStatus());
@@ -184,8 +180,8 @@ public class RestClientTest {
     public void testServerErrorWithBodyCustomMapping() {
         final String url = format("http://localhost:%d/%s", port, BAD_GATEWAY_ERROR_BODY);
         try {
-            final Optional<Void> response = restClient
-                    .get(url, Void.class)
+            final Optional<SimpleResponse> response = restClient
+                    .get(url, SimpleResponse.class)
                     .addExceptionMapping(HttpStatus.SC_BAD_GATEWAY, (ex) -> new CustomException(ex.getBody().toString()))
                     .execute();
         } catch (CustomException exception) {
@@ -193,58 +189,88 @@ public class RestClientTest {
         }
     }
 
-//    @Test
-//    public void testInternalErrorMapping() {
-//        String url = "/error";
-//        server.expect(requestTo(url))
-//              .andExpect(method(HttpMethod.GET))
-//              .andRespond(withServerError());
-//
-//        try {
-//            restClient.get(url, Boolean.class)
-//                      .addExceptionMapping(HttpStatus.INTERNAL_SERVER_ERROR.value(),
-//                                           RuntimeException::new)
-//                      .make();
-//        } catch (RuntimeException exception) {
-//            assertEquals(HttpServerErrorException.class, exception.getCause().getClass());
-//        }
-//        server.verify();
-//    }
-//
-//    @Test
-//    public void testBadRequestThrowing() {
-//        String url = "/error";
-//        server.expect(requestTo(url))
-//              .andExpect(method(HttpMethod.GET))
-//              .andRespond(withBadRequest());
-//
-//        try {
-//            restClient.get(url, Boolean.class).make();
-//        } catch (RestClientException exception) {
-//            assertEquals(HttpClientErrorException.class, exception.getClass());
-//        }
-//        server.verify();
-//    }
-//
-//    @Test
-//    public void testInternalErrorSuppress() {
-//        String url = "/error";
-//        server.expect(requestTo(url))
-//              .andExpect(method(HttpMethod.GET))
-//              .andRespond(withServerError());
-//
-//        final String message = "test";
-//        Optional<PingResponse> response =
-//                restClient.get(url, PingResponse.class)
-//                          .processServerExceptions(false)
-//                          .processServerExceptions(false)
-//                          .defaultResponse(Optional.of(new PingResponse(message)))
-//                          .make();
-//
-//        server.verify();
-//
-//        assertTrue(response.isPresent());
-//        assertEquals(message, response.get().getMessage());
-//    }
+    @Test
+    public void testServerErrorRetry() {
+        final String url = format("http://localhost:%d/%s", port, BAD_GATEWAY_ERROR_RETRY);
+        final Optional<SimpleResponse> response =
+                restClient.get(url, SimpleResponse.class)
+                          .retryServerError(true)
+                          .retryCount(3)
+                          .execute();
 
+        assertTrue(response.isPresent());
+        assertEquals("Bad Gateway", response.get().getMessage());
+    }
+
+    @Test(expected = HttpRestResourceException.class)
+    public void testConnectionError() {
+        final String url = "http://localhost:5000/test";
+        final Optional<Void> response = restClient
+                .get(url, Void.class)
+                .execute();
+    }
+
+    @Test(expected = CustomException.class)
+    public void testConnectionErrorMapping() {
+        final String url = "http://localhost:5000/test";
+        final Optional<Void> response = restClient
+                .get(url, Void.class)
+                .resourceExceptionMapper((ex) -> new CustomException(ex.getMessage()))
+                .execute();
+    }
+
+    @Test
+    public void testTimeoutSuppress() {
+        final String url = format("http://localhost:%d/%s", port, TIMEOUT);
+        final long start = System.currentTimeMillis();
+        final Optional<Void> response = restClient
+                .get(url, Void.class)
+                .requestProcessingTimeout(1, TimeUnit.SECONDS)
+                .processTimeoutExceptions(false)
+                .execute();
+
+        final long duration = System.currentTimeMillis() - start;
+
+        if (duration > 2 * 1000) {
+            fail("Timeout not working");
+        }
+    }
+
+    @Test(expected = HttpRestTimeoutException.class)
+    public void testTimeout() {
+        final String url = format("http://localhost:%d/%s", port, TIMEOUT);
+        final Optional<Void> response = restClient
+                .get(url, Void.class)
+                .requestProcessingTimeout(1, TimeUnit.SECONDS)
+                .execute();
+    }
+
+    @Test(expected = CustomException.class)
+    public void testTimeoutMapping() {
+        final String url = format("http://localhost:%d/%s", port, TIMEOUT);
+        final Optional<Void> response = restClient
+                .get(url, Void.class)
+                .requestProcessingTimeout(1, TimeUnit.SECONDS)
+                .timeoutExceptionMapping((ex) -> new CustomException(ex.getMessage()))
+                .execute();
+    }
+
+    @Test
+    public void testTimeoutRetry() {
+        final String url = format("http://localhost:%d/%s", port, TIMEOUT_RETRY);
+        final long start = System.currentTimeMillis();
+        final Optional<SimpleResponse> response = restClient
+                .get(url, SimpleResponse.class)
+                .requestProcessingTimeout(1, TimeUnit.SECONDS)
+                .retryCount(3)
+                .execute();
+
+        final long duration = System.currentTimeMillis() - start;
+
+        if (duration > 3 * 1000) {
+            fail("Timeout not working");
+        }
+        assertTrue(response.isPresent());
+        assertEquals("OK", response.get().getMessage());
+    }
 }

@@ -17,6 +17,7 @@ import ru.romanow.core.rest.client.exception.*;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.net.SocketException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
@@ -99,6 +100,7 @@ public class RestClient {
         private TimeUnit timeoutTimeUnit;
         private int retryCount;
         private boolean retryServerError;
+        private boolean retryConnectionError;
         private boolean processTimeoutExceptions;
         private TimeoutExceptionMapper<? extends RuntimeException> timeoutExceptionMapping;
 
@@ -117,7 +119,8 @@ public class RestClient {
             this.processResourceExceptions = true;
 
             this.requestProcessingTimeout = DEFAULT_REQUEST_TIMEOUT;
-            this.retryServerError = true;
+            this.retryServerError = false;
+            this.retryConnectionError = false;
             this.timeoutTimeUnit = TimeUnit.MILLISECONDS;
             this.processTimeoutExceptions = true;
             this.retryCount = 0;
@@ -186,6 +189,12 @@ public class RestClient {
         }
 
         @Nonnull
+        public T retryConnectionError(boolean retryConnectionError) {
+            this.retryConnectionError = retryConnectionError;
+            return getThis();
+        }
+
+        @Nonnull
         public T processTimeoutExceptions(boolean processTimeoutExceptions) {
             this.processTimeoutExceptions = processTimeoutExceptions;
             return getThis();
@@ -249,7 +258,7 @@ public class RestClient {
                     final HttpRestClientException exception =
                             new HttpRestClientException(status, reason, getResponseBody(httpResponse.getEntity()));
                     if (this.exceptionMapping.containsKey(status)) {
-                        this.exceptionMapping.get(status).produce(exception);
+                        throw this.exceptionMapping.get(status).produce(exception);
                     } else {
                         throw exception;
                     }
@@ -266,14 +275,31 @@ public class RestClient {
                         final HttpRestServerException exception =
                                 new HttpRestServerException(status, reason, getResponseBody(httpResponse.getEntity()));
                         if (this.exceptionMapping.containsKey(status)) {
-                            this.exceptionMapping.get(status).produce(exception);
+                            throw this.exceptionMapping.get(status).produce(exception);
                         } else {
                             throw exception;
                         }
                     }
                 }
             } catch (ExecutionException exception) {
-                logger.error("Execution", exception);
+                if (exception.getCause() instanceof SocketException) {
+                    if (this.retryConnectionError && retryCount > 0) {
+                        return executeRequest(request, retryCount - 1);
+                    }
+                    final String message = format("Can't establish connection to '%s'", this.url);
+                    logger.warn(message);
+
+                    if (this.processResourceExceptions) {
+                        final HttpRestResourceException resourceException = new HttpRestResourceException(exception);
+                        if (this.resourceExceptionMapper != null) {
+                            throw this.resourceExceptionMapper.produce(resourceException);
+                        } else {
+                            throw resourceException;
+                        }
+                    }
+                } else {
+                    throw new RuntimeException(exception);
+                }
             } catch (TimeoutException exception) {
                 if (retryCount > 0) {
                     return executeRequest(request, retryCount - 1);
@@ -281,8 +307,13 @@ public class RestClient {
                 final String message = format("Request to '%s' failed with timeout", this.url);
                 logger.warn(message);
 
-                if (this.processTimeoutExceptions && this.timeoutExceptionMapping != null) {
-                    this.timeoutExceptionMapping.produce(new HttpRestTimeoutException(exception));
+                if (this.processTimeoutExceptions) {
+                    final HttpRestTimeoutException timeoutException = new HttpRestTimeoutException(exception);
+                    if (this.timeoutExceptionMapping != null) {
+                        throw this.timeoutExceptionMapping.produce(timeoutException);
+                    } else {
+                        throw timeoutException;
+                    }
                 }
             } catch (InterruptedException exception) {
                 logger.error("InterruptedException", exception);
