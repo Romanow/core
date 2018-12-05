@@ -32,11 +32,10 @@ configure(subprojects) { project ->
     repositories {
         mavenCentral()
     }
-    
+
     dependencies {
         compile "org.slf4j:slf4j-api:${slf4jVersion}"
         compile "com.google.code.findbugs:jsr305:${findBugsVersion}"
-        compile "org.projectlombok:lombok:${lombokVersion}"
     }
 }
 
@@ -47,6 +46,8 @@ project("rest-client") {
         compile "org.apache.httpcomponents:httpasyncclient:${apacheHttpClient}"
         compile "com.google.code.gson:gson:${gsonVersion}"
 
+        testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+        testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
         testCompile "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
         testCompile "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
     }
