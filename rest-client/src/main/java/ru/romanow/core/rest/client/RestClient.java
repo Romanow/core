@@ -127,13 +127,13 @@ public class RestClient {
         }
 
         @Nonnull
-        public T defaultResponse(Supplier<Optional<RESP>> defaultResponse) {
+        public T defaultResponse(@Nonnull Supplier<Optional<RESP>> defaultResponse) {
             this.defaultResponse = defaultResponse;
             return getThis();
         }
 
         @Nonnull
-        public T errorResponseClass(Integer statusCode, Class<?> errorResponseClass) {
+        public T errorResponseClass(int statusCode, Class<?> errorResponseClass) {
             this.errorResponseClass.put(statusCode, errorResponseClass);
             return getThis();
         }
@@ -157,20 +157,20 @@ public class RestClient {
         }
 
         @Nonnull
-        public T processResourceExceptions(boolean processResourceExceptions) {
-            this.processResourceExceptions = processResourceExceptions;
+        public T processResourceExceptions(boolean process) {
+            this.processResourceExceptions = process;
             return getThis();
         }
 
         @Nonnull
         public T resourceExceptionMapper(
-                ExceptionMapper<? extends RuntimeException, HttpRestResourceException> resourceExceptionMapper) {
+                @Nonnull ExceptionMapper<? extends RuntimeException, HttpRestResourceException> resourceExceptionMapper) {
             this.resourceExceptionMapper = resourceExceptionMapper;
             return getThis();
         }
 
         @Nonnull
-        public T requestProcessingTimeout(int requestProcessingTimeout, TimeUnit timeoutTimeUnit) {
+        public T requestProcessingTimeout(int requestProcessingTimeout, @Nonnull TimeUnit timeoutTimeUnit) {
             this.requestProcessingTimeout = requestProcessingTimeout;
             this.timeoutTimeUnit = timeoutTimeUnit;
             return getThis();
@@ -183,14 +183,14 @@ public class RestClient {
         }
 
         @Nonnull
-        public T retryServerError(boolean retryServerError) {
-            this.retryServerError = retryServerError;
+        public T retryServerError(boolean retry) {
+            this.retryServerError = retry;
             return getThis();
         }
 
         @Nonnull
-        public T retryConnectionError(boolean retryConnectionError) {
-            this.retryConnectionError = retryConnectionError;
+        public T retryConnectionError(boolean retry) {
+            this.retryConnectionError = retry;
             return getThis();
         }
 
@@ -202,25 +202,25 @@ public class RestClient {
 
         @Nonnull
         public T timeoutExceptionMapping(
-                TimeoutExceptionMapper<? extends RuntimeException> timeoutExceptionMapping) {
+                @Nonnull TimeoutExceptionMapper<? extends RuntimeException> timeoutExceptionMapping) {
             this.timeoutExceptionMapping = timeoutExceptionMapping;
             return getThis();
         }
 
         @Nonnull
-        public T addParam(String name, String value) {
+        public T addParam(@Nonnull String name, @Nullable String value) {
             this.params.put(name, value);
             return getThis();
         }
 
         @Nonnull
-        public T addHeader(String name, String value) {
+        public T addHeader(@Nonnull String name, @Nonnull String value) {
             this.headers.put(name, value);
             return getThis();
         }
 
         @Nonnull
-        public T addParams(Map<String, String> params) {
+        public T addParams(@Nonnull Map<String, String> params) {
             this.params = params;
             return getThis();
         }
