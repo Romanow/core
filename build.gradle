@@ -38,33 +38,3 @@ configure(subprojects) { project ->
         compile "com.google.code.findbugs:jsr305:${findBugsVersion}"
     }
 }
-
-project("rest-client") {
-    version = "${restClientVersion}"
-
-    dependencies {
-        compile "org.apache.httpcomponents:httpasyncclient:${apacheHttpClient}"
-        compile "com.google.code.gson:gson:${gsonVersion}"
-
-        testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
-        testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
-        testCompile "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
-        testCompile "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
-    }
-}
-
-project("commons") {
-    version = "${commonsVersion}"
-
-    dependencies {
-        compile "org.springframework:spring-web:${springVersion}"
-        compile "org.springframework:spring-context:${springVersion}"
-        compile "org.springframework:spring-aspects:${springVersion}"
-
-        compile "org.apache.commons:commons-lang3:${commonsLangVersion}"
-        compile "com.google.code.gson:gson:${gsonVersion}"
-        compile "com.google.guava:guava:${guavaVersion}"
-
-        testCompile "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
-    }
-}

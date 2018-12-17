@@ -1,0 +1,13 @@
+version = "${commonsVersion}"
+
+dependencies {
+    compile "org.springframework:spring-web:${springVersion}"
+    compile "org.springframework:spring-context:${springVersion}"
+    compile "org.springframework:spring-aspects:${springVersion}"
+
+    compile "org.apache.commons:commons-lang3:${commonsLangVersion}"
+    compile "com.google.code.gson:gson:${gsonVersion}"
+    compile "com.google.guava:guava:${guavaVersion}"
+
+    testCompile "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
+}
