@@ -2,10 +2,16 @@ package ru.romanow.core.spring.rest.client;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.*;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.RequestEntity;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.*;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import ru.romanow.core.spring.rest.client.exception.*;
 
@@ -24,6 +30,7 @@ import java.util.function.Supplier;
 import static java.lang.String.format;
 import static java.util.Optional.ofNullable;
 import static java.util.concurrent.CompletableFuture.supplyAsync;
+import static org.springframework.util.StringUtils.hasLength;
 import static ru.romanow.core.spring.rest.client.utils.JsonSerializer.fromJson;
 
 public class SpringRestClient {
@@ -238,7 +245,7 @@ public class SpringRestClient {
                         }
                     }
                 } else if (exception.getCause() instanceof HttpClientErrorException) {
-                    final HttpClientErrorException clientErrorException = (HttpClientErrorException)exception.getCause();
+                    final HttpClientErrorException clientErrorException = (HttpClientErrorException) exception.getCause();
                     final int status = clientErrorException.getRawStatusCode();
                     final String reason = clientErrorException.getStatusText();
 
@@ -260,7 +267,7 @@ public class SpringRestClient {
                         return executeRequest(request, retryCount - 1);
                     }
 
-                    final HttpServerErrorException serverErrorException = (HttpServerErrorException)exception.getCause();
+                    final HttpServerErrorException serverErrorException = (HttpServerErrorException) exception.getCause();
                     final int status = serverErrorException.getRawStatusCode();
                     final String reason = serverErrorException.getStatusText();
 
@@ -302,12 +309,16 @@ public class SpringRestClient {
             return defaultResponse.get();
         }
 
+        @Nullable
         private Object getErrorResponseBody(int status, @Nullable String response) {
-            if (this.errorResponseClass.containsKey(status)) {
-                final Class<?> cls = this.errorResponseClass.get(status);
-                return fromJson(response, cls);
+            if (hasLength(response)) {
+                if (this.errorResponseClass.containsKey(status)) {
+                    final Class<?> cls = this.errorResponseClass.get(status);
+                    return fromJson(response, cls);
+                }
+                return response;
             }
-            return response;
+            return null;
         }
 
         @Nonnull
@@ -324,8 +335,9 @@ public class SpringRestClient {
             RequestEntity.BodyBuilder request = RequestEntity.method(this.method, buildUri());
             headers.forEach(request::header);
             if (requestBody != null) {
-                request.contentType(MediaType.APPLICATION_JSON_UTF8);
-                request.body(requestBody);
+                return request
+                        .contentType(MediaType.APPLICATION_JSON_UTF8)
+                        .body(requestBody);
             }
             return request.build();
         }

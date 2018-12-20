@@ -12,17 +12,22 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
+import ru.romanow.core.spring.rest.client.exception.HttpRestClientException;
+import ru.romanow.core.spring.rest.client.exception.HttpRestServerException;
 import ru.romanow.core.spring.rest.client.model.AuthRequest;
 import ru.romanow.core.spring.rest.client.model.AuthResponse;
 import ru.romanow.core.spring.rest.client.model.PingResponse;
 import ru.romanow.core.spring.rest.client.model.SimpleResponse;
 
 import java.util.Optional;
+import java.util.UUID;
 
+import static java.lang.String.format;
 import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import static org.springframework.util.StringUtils.hasLength;
 import static ru.romanow.core.spring.rest.client.Constants.*;
 import static ru.romanow.core.spring.rest.client.utils.JsonSerializer.toJson;
 
@@ -48,7 +53,7 @@ public class SpringRestClientTest {
         server.expect(requestTo(PING))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withStatus(HttpStatus.OK)
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON_UTF8)
                         .body(toJson(new PingResponse(resp))));
 
         Optional<PingResponse> result = restClient.get(PING, PingResponse.class).execute();
@@ -67,8 +72,8 @@ public class SpringRestClientTest {
                 .andExpect(method(HttpMethod.GET))
                 .andExpect(header(headerName, headerParam))
                 .andRespond(withStatus(HttpStatus.OK)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(toJson(new PingResponse("OK"))));
+                        .contentType(MediaType.APPLICATION_JSON_UTF8)
+                        .body(toJson(new PingResponse(headerParam))));
 
         final Optional<SimpleResponse> response =
                 restClient.get(CUSTOM_HEADER, SimpleResponse.class)
@@ -83,12 +88,11 @@ public class SpringRestClientTest {
     public void testGetWithParamSuccess() {
         final String queryParam = "test";
         final String queryName = "query";
-        server.expect(requestTo(QUERY_PARAM))
+        server.expect(requestTo(format("%s?%s=%s", QUERY_PARAM, queryName, queryParam)))
                 .andExpect(method(HttpMethod.GET))
-                .andExpect(queryParam(queryName, queryParam))
                 .andRespond(withStatus(HttpStatus.OK)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(toJson(new PingResponse(queryParam))));
+                        .contentType(MediaType.APPLICATION_JSON_UTF8)
+                        .body(toJson(new SimpleResponse(queryParam))));
 
         final Optional<SimpleResponse> response =
                 restClient.get(QUERY_PARAM, SimpleResponse.class)
@@ -101,43 +105,52 @@ public class SpringRestClientTest {
 
     @Test
     public void testPostSuccess() {
+        final UUID uin = UUID.randomUUID();
+        final AuthResponse authResponse = new AuthResponse(uin, 1000L, true);
         final AuthRequest auth = new AuthRequest("ronin", "test");
-        server.expect(requestTo(QUERY_PARAM))
+        server.expect(requestTo(AUTH))
                 .andExpect(method(HttpMethod.POST))
-                .andExpect(content().json(toJson(auth)))
+                .andExpect(content().string(toJson(auth)))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8))
                 .andRespond(withStatus(HttpStatus.OK)
-                        .contentType(MediaType.APPLICATION_JSON));
+                        .contentType(MediaType.APPLICATION_JSON_UTF8)
+                        .body(toJson(authResponse)));
 
         final Optional<AuthResponse> response =
                 restClient.post(AUTH, auth, AuthResponse.class).execute();
 
         Assert.assertTrue(response.isPresent());
+        Assert.assertEquals(uin, response.get().getUin());
     }
 
-//    @Test
-//    public void testClientErrorSuppress() {
-//        final String url = format("http://localhost:%d/%s", port, BAD_REQUEST_ERROR);
-//        final Optional<Void> response =
-//                restClient.get(url, Void.class)
-//                        .processClientExceptions(false)
-//                        .execute();
-//
-//        assertFalse(response.isPresent());
-//    }
-//
-//    @Test
-//    public void testClientError() {
-//        final String url = format("http://localhost:%d/%s", port, BAD_REQUEST_ERROR);
-//        try {
-//            final Optional<Void> response =
-//                    restClient.get(url, Void.class)
-//                            .execute();
-//        } catch (HttpRestClientException exception) {
-//            assertEquals(HttpStatus.SC_BAD_REQUEST, exception.getResponseStatus());
-//            assertNull(exception.getBody());
-//        }
-//    }
-//
+    @Test
+    public void testClientErrorSuppress() {
+        server.expect(requestTo(BAD_REQUEST_ERROR))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.BAD_REQUEST));
+
+        final Optional<Void> response =
+                restClient.get(BAD_REQUEST_ERROR, Void.class)
+                        .processClientExceptions(false)
+                        .execute();
+
+        assertFalse(response.isPresent());
+    }
+
+    @Test
+    public void testClientError() {
+        server.expect(requestTo(BAD_REQUEST_ERROR))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.BAD_REQUEST));
+
+        try {
+            restClient.get(BAD_REQUEST_ERROR, Void.class).execute();
+        } catch (HttpRestClientException exception) {
+            assertEquals(HttpStatus.BAD_REQUEST.value(), exception.getResponseStatus());
+            assertNull(exception.getBody());
+        }
+    }
+
 //    @Test
 //    public void testClientErrorWithBody() {
 //        final String url = format("http://localhost:%d/%s", port, BAD_REQUEST_ERROR_BODY);
@@ -164,31 +177,35 @@ public class SpringRestClientTest {
 //            assertEquals(toJson(new SimpleResponse("Bad Request")), exception.getMessage());
 //        }
 //    }
-//
-//    @Test
-//    public void testServerErrorSuppress() {
-//        final String url = format("http://localhost:%d/%s", port, BAD_GATEWAY_ERROR);
-//        final Optional<Void> response =
-//                restClient.get(url, Void.class)
-//                        .processServerExceptions(false)
-//                        .execute();
-//
-//        assertFalse(response.isPresent());
-//    }
-//
-//    @Test
-//    public void testServerError() {
-//        final String url = format("http://localhost:%d/%s", port, BAD_GATEWAY_ERROR);
-//        try {
-//            final Optional<Void> response =
-//                    restClient.get(url, Void.class)
-//                            .execute();
-//        } catch (HttpRestServerException exception) {
-//            assertEquals(HttpStatus.SC_BAD_GATEWAY, exception.getResponseStatus());
-//            assertNull(exception.getBody());
-//        }
-//    }
-//
+
+    @Test
+    public void testServerErrorSuppress() {
+        server.expect(requestTo(BAD_GATEWAY_ERROR))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.BAD_GATEWAY));
+
+        final Optional<Void> response =
+                restClient.get(BAD_GATEWAY_ERROR, Void.class)
+                        .processServerExceptions(false)
+                        .execute();
+
+        assertFalse(response.isPresent());
+    }
+
+    @Test
+    public void testServerError() {
+        server.expect(requestTo(BAD_GATEWAY_ERROR))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.BAD_GATEWAY));
+
+        try {
+            restClient.get(BAD_GATEWAY_ERROR, Void.class).execute();
+        } catch (HttpRestServerException exception) {
+            assertEquals(HttpStatus.BAD_GATEWAY.value(), exception.getResponseStatus());
+            assertNull(exception.getBody());
+        }
+    }
+
 //    @Test
 //    public void testServerErrorWithBody() {
 //        final String url = format("http://localhost:%d/%s", port, BAD_GATEWAY_ERROR_BODY);
@@ -370,9 +387,9 @@ public class SpringRestClientTest {
 //
 //        server.expect(requestTo(url))
 //                .andExpect(content().string(gson.toJson(request)))
-//                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8))
+//                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8_UTF8))
 //                .andExpect(method(HttpMethod.POST))
-//                .andRespond(withSuccess(gson.toJson(response), MediaType.APPLICATION_JSON_UTF8));
+//                .andRespond(withSuccess(gson.toJson(response), MediaType.APPLICATION_JSON_UTF8_UTF8));
 //
 //        Optional<AuthResponse> result =
 //                restClient.post(url, request, AuthResponse.class)
