@@ -1,7 +1,7 @@
 version = "${springRestClientVersion}"
 
 dependencies {
-    compile "org.springframework:spring-webflux:${springVersion}"
+    compile "org.springframework:spring-web:${springVersion}"
     compile "com.google.code.gson:gson:${gsonVersion}"
 
     testCompileOnly "org.projectlombok:lombok:${lombokVersion}"

@@ -2,28 +2,28 @@ package ru.romanow.core.spring.rest.client;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpMethod;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
-import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestClientResponseException;
-import org.springframework.web.reactive.function.client.ClientResponse;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
+import org.springframework.http.*;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.*;
+import org.springframework.web.util.UriComponentsBuilder;
 import ru.romanow.core.spring.rest.client.exception.*;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
 import static java.lang.String.format;
+import static java.util.Optional.ofNullable;
+import static java.util.concurrent.CompletableFuture.supplyAsync;
 import static ru.romanow.core.spring.rest.client.utils.JsonSerializer.fromJson;
 
 public class SpringRestClient {
@@ -31,10 +31,10 @@ public class SpringRestClient {
 
     private static final int DEFAULT_REQUEST_TIMEOUT = 3000;
 
-    private final WebClient webClient;
+    private final RestTemplate restTemplate;
 
-    public SpringRestClient(WebClient webClient) {
-        this.webClient = webClient;
+    public SpringRestClient(@Nonnull RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
     }
 
     // region Builders
@@ -63,7 +63,7 @@ public class SpringRestClient {
         private String url;
         private HttpMethod method;
         private Object requestBody;
-        private Map<String, String> params;
+        private MultiValueMap<String, String> params;
         private Map<String, String> headers;
 
         private Class<RESP> responseClass;
@@ -79,7 +79,7 @@ public class SpringRestClient {
         private ExceptionMapper<? extends RuntimeException, HttpRestResourceException> resourceExceptionMapper;
 
         private int requestProcessingTimeout;
-        private TemporalUnit timeoutTimeUnit;
+        private TimeUnit timeoutTimeUnit;
         private int retryCount;
         private boolean retryServerError;
         private boolean retryConnectionError;
@@ -88,8 +88,9 @@ public class SpringRestClient {
 
         RequestBuilder(@Nonnull String url, @Nonnull HttpMethod httpMethod, @Nullable Object requestBody, @Nonnull Class<RESP> responseClass) {
             this.url = url;
+            this.requestBody = requestBody;
             this.method = httpMethod;
-            this.params = new HashMap<>();
+            this.params = new LinkedMultiValueMap<>();
             this.headers = new HashMap<>();
             this.responseClass = responseClass;
             this.defaultResponse = Optional::empty;
@@ -104,7 +105,7 @@ public class SpringRestClient {
             this.requestProcessingTimeout = DEFAULT_REQUEST_TIMEOUT;
             this.retryServerError = false;
             this.retryConnectionError = false;
-            this.timeoutTimeUnit = ChronoUnit.MILLIS;
+            this.timeoutTimeUnit = TimeUnit.MILLISECONDS;
             this.processTimeoutExceptions = true;
             this.retryCount = 0;
         }
@@ -157,7 +158,7 @@ public class SpringRestClient {
         }
 
         @Nonnull
-        public RequestBuilder<RESP> requestProcessingTimeout(int requestProcessingTimeout, @Nonnull TemporalUnit timeoutTimeUnit) {
+        public RequestBuilder<RESP> requestProcessingTimeout(int requestProcessingTimeout, @Nonnull TimeUnit timeoutTimeUnit) {
             this.requestProcessingTimeout = requestProcessingTimeout;
             this.timeoutTimeUnit = timeoutTimeUnit;
             return this;
@@ -196,7 +197,7 @@ public class SpringRestClient {
 
         @Nonnull
         public RequestBuilder<RESP> addParam(@Nonnull String name, @Nullable String value) {
-            this.params.put(name, value);
+            this.params.add(name, value);
             return this;
         }
 
@@ -207,107 +208,126 @@ public class SpringRestClient {
         }
 
         @Nonnull
-        public RequestBuilder<RESP> addParams(@Nonnull Map<String, String> params) {
-            this.params = params;
-            return this;
+        public Optional<RESP> execute() {
+            return executeRequest(buildRequest(), retryCount);
         }
 
         @Nonnull
-        public Optional<RESP> execute() {
-            final Mono<ClientResponse> response = prepareRequest()
-                    .exchange()
-                    .timeout(Duration.of(requestProcessingTimeout, timeoutTimeUnit))
-                    .retry(retryCount, this::retry)
-                    .doOnSuccess(body -> body.bodyToMono(responseClass))
-                    .doOnError(HttpClientErrorException.class, this::processClientError)
-                    .doOnError(HttpServerErrorException.class, this::processServerError)
-                    .doOnError(ResourceAccessException.class, this::processResourceError)
-                    .doOnError(TimeoutException.class, this::processTimeoutError);
+        private Optional<RESP> executeRequest(RequestEntity<?> request, int retryCount) {
+            final CompletableFuture<ResponseEntity<RESP>> future =
+                    supplyAsync(() -> restTemplate.exchange(request, responseClass));
+            try {
+                ResponseEntity<RESP> response = future.get(this.requestProcessingTimeout, this.timeoutTimeUnit);
+                if (response.getStatusCode().is2xxSuccessful()) {
+                    return ofNullable(response.getBody());
+                }
+            } catch (ExecutionException exception) {
+                if (exception.getCause() instanceof ResourceAccessException) {
+                    if (this.retryConnectionError && retryCount > 0) {
+                        return executeRequest(request, retryCount - 1);
+                    }
+                    final String message = format("Can't establish connection to '%s'", this.url);
+                    logger.warn(message);
+
+                    if (this.processResourceExceptions) {
+                        final HttpRestResourceException resourceException = new HttpRestResourceException(exception);
+                        if (this.resourceExceptionMapper != null) {
+                            throw this.resourceExceptionMapper.produce(resourceException);
+                        } else {
+                            throw resourceException;
+                        }
+                    }
+                } else if (exception.getCause() instanceof HttpClientErrorException) {
+                    final HttpClientErrorException clientErrorException = (HttpClientErrorException)exception.getCause();
+                    final int status = clientErrorException.getRawStatusCode();
+                    final String reason = clientErrorException.getStatusText();
+
+                    final String message = format("Request to '%s' failed with client error: %d:%s", this.url, status, reason);
+                    logger.warn(message);
+
+                    if (processClientExceptions) {
+                        final HttpRestClientException customException =
+                                new HttpRestClientException(status, reason,
+                                        getErrorResponseBody(status, clientErrorException.getResponseBodyAsString()));
+                        if (this.exceptionMapping.containsKey(status)) {
+                            throw this.exceptionMapping.get(status).produce(customException);
+                        } else {
+                            throw customException;
+                        }
+                    }
+                } else if (exception.getCause() instanceof HttpServerErrorException) {
+                    if (this.retryServerError && retryCount > 0) {
+                        return executeRequest(request, retryCount - 1);
+                    }
+
+                    final HttpServerErrorException serverErrorException = (HttpServerErrorException)exception.getCause();
+                    final int status = serverErrorException.getRawStatusCode();
+                    final String reason = serverErrorException.getStatusText();
+
+                    if (this.processServerExceptions) {
+                        final String message = format("Request to '%s' failed with server error: %d:%s", this.url, status, reason);
+                        logger.warn(message);
+
+                        final HttpRestServerException customException =
+                                new HttpRestServerException(status, reason,
+                                        getErrorResponseBody(status, serverErrorException.getResponseBodyAsString()));
+                        if (this.exceptionMapping.containsKey(status)) {
+                            throw this.exceptionMapping.get(status).produce(customException);
+                        } else {
+                            throw customException;
+                        }
+                    }
+                } else {
+                    throw new RuntimeException(exception);
+                }
+            } catch (TimeoutException exception) {
+                if (retryCount > 0) {
+                    return executeRequest(request, retryCount - 1);
+                }
+                final String message = format("Request to '%s' failed with timeout", this.url);
+                logger.warn(message);
+
+                if (this.processTimeoutExceptions) {
+                    final HttpRestTimeoutException timeoutException = new HttpRestTimeoutException(exception);
+                    if (this.timeoutExceptionMapping != null) {
+                        throw this.timeoutExceptionMapping.produce(timeoutException);
+                    } else {
+                        throw timeoutException;
+                    }
+                }
+            } catch (InterruptedException exception) {
+                logger.error("InterruptedException", exception);
+            }
 
             return defaultResponse.get();
         }
 
-        private boolean retry(Throwable throwable) {
-            if (throwable instanceof HttpServerErrorException) {
-                return this.retryServerError;
-            } else if (throwable instanceof ResourceAccessException) {
-                return this.retryConnectionError;
+        private Object getErrorResponseBody(int status, @Nullable String response) {
+            if (this.errorResponseClass.containsKey(status)) {
+                final Class<?> cls = this.errorResponseClass.get(status);
+                return fromJson(response, cls);
             }
-
-            return throwable instanceof TimeoutException;
-        }
-
-        private void processTimeoutError(TimeoutException exception) {
-            final String message = format("Request to '%s' failed with timeout", this.url);
-            logger.warn(message);
-
-            if (this.processTimeoutExceptions) {
-                final HttpRestTimeoutException timeoutException = new HttpRestTimeoutException(exception);
-                if (this.timeoutExceptionMapping != null) {
-                    throw this.timeoutExceptionMapping.produce(timeoutException);
-                } else {
-                    throw timeoutException;
-                }
-            }
-        }
-
-        private void processClientError(HttpClientErrorException exception) {
-            final int status = exception.getRawStatusCode();
-            final String reason = exception.getStatusText();
-            final String message = format("Request to '%s' failed with client error: %d:%s", this.url, status, reason);
-            logger.warn(message);
-
-            final HttpRestClientException customException =
-                    new HttpRestClientException(status, reason, getErrorResponse(exception));
-            if (this.exceptionMapping.containsKey(status)) {
-                throw this.exceptionMapping.get(status).produce(customException);
-            } else {
-                throw exception;
-            }
-        }
-
-        private void processServerError(HttpServerErrorException exception) {
-            final int status = exception.getRawStatusCode();
-            final String reason = exception.getStatusText();
-            final String message = format("Request to '%s' failed with server error: %d:%s", this.url, status, reason);
-            logger.warn(message);
-
-            if (this.processServerExceptions) {
-                final HttpRestServerException customException =
-                        new HttpRestServerException(status, reason, getErrorResponse(exception));
-                if (this.exceptionMapping.containsKey(status)) {
-                    throw this.exceptionMapping.get(status).produce(customException);
-                } else {
-                    throw exception;
-                }
-            }
-        }
-
-        private void processResourceError(ResourceAccessException exception) {
-            final String message = format("Can't establish connection to '%s'", this.url);
-            logger.warn(message);
-
-            if (this.processResourceExceptions) {
-                final HttpRestResourceException resourceException = new HttpRestResourceException(exception);
-                if (this.resourceExceptionMapper != null) {
-                    throw this.resourceExceptionMapper.produce(resourceException);
-                } else {
-                    throw resourceException;
-                }
-            }
-        }
-
-        private Object getErrorResponse(RestClientResponseException exception) {
-            final String response = exception.getResponseBodyAsString();
-            final Class<?> cls = this.errorResponseClass.get(exception.getRawStatusCode());
-            return cls != null ? fromJson(response, cls) : response;
+            return response;
         }
 
         @Nonnull
-        private WebClient.RequestBodySpec prepareRequest() {
-            final WebClient.RequestBodyUriSpec method = webClient.method(HttpMethod.GET);
-            headers.forEach(method::header);
-            return method.uri(url, params);
+        private URI buildUri() {
+            return UriComponentsBuilder
+                    .fromUriString(this.url)
+                    .queryParams(this.params)
+                    .build()
+                    .toUri();
+        }
+
+        @Nonnull
+        private RequestEntity<?> buildRequest() {
+            RequestEntity.BodyBuilder request = RequestEntity.method(this.method, buildUri());
+            headers.forEach(request::header);
+            if (requestBody != null) {
+                request.contentType(MediaType.APPLICATION_JSON_UTF8);
+                request.body(requestBody);
+            }
+            return request.build();
         }
     }
 }
