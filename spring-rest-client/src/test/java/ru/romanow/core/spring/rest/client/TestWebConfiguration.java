@@ -5,7 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration
-public class TestServerConfiguration {
+public class TestWebConfiguration {
 
     @Bean
     public RestTemplate restTemplate() {

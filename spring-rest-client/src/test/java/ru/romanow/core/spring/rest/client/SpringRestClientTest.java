@@ -11,11 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.web.client.MockRestServiceServer;
-import org.springframework.test.web.client.response.DefaultResponseCreator;
-import org.springframework.test.web.client.response.MockRestResponseCreators;
 import org.springframework.web.client.RestTemplate;
 import ru.romanow.core.spring.rest.client.exception.HttpRestClientException;
-import ru.romanow.core.spring.rest.client.exception.HttpRestResourceException;
 import ru.romanow.core.spring.rest.client.exception.HttpRestServerException;
 import ru.romanow.core.spring.rest.client.exceptions.CustomException;
 import ru.romanow.core.spring.rest.client.model.AuthRequest;
@@ -37,7 +34,7 @@ import static ru.romanow.core.spring.rest.client.utils.JsonSerializer.fromJson;
 import static ru.romanow.core.spring.rest.client.utils.JsonSerializer.toJson;
 
 @RunWith(SpringJUnit4ClassRunner.class)
-@SpringBootTest(classes = TestServerConfiguration.class)
+@SpringBootTest(classes = TestWebConfiguration.class)
 public class SpringRestClientTest {
 
     @Autowired
