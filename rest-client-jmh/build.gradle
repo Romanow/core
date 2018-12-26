@@ -1,0 +1,6 @@
+apply plugin: 'me.champeau.gradle.jmh'
+
+dependencies {
+    jmh project(":rest-client")
+    jmh project(":spring-rest-client")
+}

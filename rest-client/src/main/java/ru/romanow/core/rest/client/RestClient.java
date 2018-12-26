@@ -9,6 +9,7 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
+import org.apache.http.nio.client.HttpAsyncClient;
 import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
 import static java.lang.String.format;
+import static java.util.Optional.empty;
+import static java.util.Optional.ofNullable;
 import static org.apache.http.util.TextUtils.isEmpty;
 import static ru.romanow.core.rest.client.utils.JsonSerializer.fromJson;
 import static ru.romanow.core.rest.client.utils.JsonSerializer.toJson;
@@ -43,14 +46,12 @@ public class RestClient {
     private static final int CONNECTION_TIMEOUT = 100;
     private static final int MAX_CONNECTIONS = 100;
 
-    private final CloseableHttpAsyncClient httpClient;
-
-    public RestClient() {
+    CloseableHttpAsyncClient build() {
         RequestConfig requestConfig = RequestConfig
                 .custom()
                 .setSocketTimeout(SOCKET_TIMEOUT)
                 .setConnectTimeout(CONNECTION_TIMEOUT).build();
-        this.httpClient = HttpAsyncClients
+        return HttpAsyncClients
                 .custom()
                 .setDefaultRequestConfig(requestConfig)
                 .setMaxConnTotal(MAX_CONNECTIONS)
@@ -227,21 +228,17 @@ public class RestClient {
 
         @Nonnull
         public Optional<RESP> execute() {
-            try {
+            final HttpRequestBase request = prepareRequest();
+            try (CloseableHttpAsyncClient httpClient = build()) {
                 httpClient.start();
-                final HttpRequestBase request = prepareRequest();
-                return executeRequest(request, retryCount);
-            } finally {
-                try {
-                    httpClient.close();
-                } catch (IOException exception) {
-                    throw new RuntimeException(exception);
-                }
+                return executeRequest(httpClient, request, retryCount);
+            } catch (IOException exception) {
+                throw new RuntimeException(exception);
             }
         }
 
         @Nonnull
-        protected Optional<RESP> executeRequest(@Nonnull HttpRequestBase request, int retryCount) {
+        protected Optional<RESP> executeRequest(@Nonnull HttpAsyncClient httpClient, @Nonnull HttpRequestBase request, int retryCount) {
             final Future<HttpResponse> response = httpClient.execute(request, null);
             try {
                 final HttpResponse httpResponse = response.get(this.requestProcessingTimeout, this.timeoutTimeUnit);
@@ -264,7 +261,7 @@ public class RestClient {
                     }
                 } else if (isServerError(status)) {
                     if (this.retryServerError && retryCount > 0) {
-                        return executeRequest(request, retryCount - 1);
+                        return executeRequest(httpClient, request, retryCount - 1);
                     }
 
                     if (this.processServerExceptions) {
@@ -284,7 +281,7 @@ public class RestClient {
             } catch (ExecutionException exception) {
                 if (exception.getCause() instanceof SocketException) {
                     if (this.retryConnectionError && retryCount > 0) {
-                        return executeRequest(request, retryCount - 1);
+                        return executeRequest(httpClient, request, retryCount - 1);
                     }
                     final String message = format("Can't establish connection to '%s'", this.url);
                     logger.warn(message);
@@ -302,7 +299,7 @@ public class RestClient {
                 }
             } catch (TimeoutException exception) {
                 if (retryCount > 0) {
-                    return executeRequest(request, retryCount - 1);
+                    return executeRequest(httpClient, request, retryCount - 1);
                 }
                 final String message = format("Request to '%s' failed with timeout", this.url);
                 logger.warn(message);
@@ -325,7 +322,11 @@ public class RestClient {
         @Nonnull
         private Optional<RESP> getResponseData(@Nonnull HttpEntity entity) {
             final String response = getResponseBody(entity);
-            return Optional.ofNullable(fromJson(response, this.responseClass));
+            if (this.responseClass.isAssignableFrom(Void.class)) {
+                return empty();
+            }
+
+            return ofNullable(fromJson(response, this.responseClass));
         }
 
         @Nullable

@@ -1,3 +1,15 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath "me.champeau.gradle:jmh-gradle-plugin:${jmhVersion}"
+    }
+}
+
 configure(subprojects) { project ->
     apply plugin: 'java'
     apply plugin: 'idea'
