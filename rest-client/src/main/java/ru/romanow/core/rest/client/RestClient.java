@@ -324,6 +324,8 @@ public class RestClient {
             final String response = getResponseBody(entity);
             if (this.responseClass.isAssignableFrom(Void.class)) {
                 return empty();
+            } else if (this.responseClass.isAssignableFrom(String.class)) {
+                return ofNullable((RESP)response);
             }
 
             return ofNullable(fromJson(response, this.responseClass));
