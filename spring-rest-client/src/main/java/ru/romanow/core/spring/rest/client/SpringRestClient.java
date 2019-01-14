@@ -49,15 +49,15 @@ public class SpringRestClient {
         return new RequestBuilder<>(url, HttpMethod.GET, responseClass);
     }
 
-    public <RESP> RequestBuilder<RESP> post(@Nonnull String url, @Nonnull Object requestBody, @Nonnull Class<RESP> requestClass) {
+    public <RESP> RequestBuilder<RESP> post(@Nonnull String url, @Nullable Object requestBody, @Nonnull Class<RESP> requestClass) {
         return new RequestBuilder<>(url, HttpMethod.POST, requestBody, requestClass);
     }
 
-    public <RESP> RequestBuilder<RESP> patch(@Nonnull String url, @Nonnull Object requestBody, @Nonnull Class<RESP> requestClass) {
+    public <RESP> RequestBuilder<RESP> patch(@Nonnull String url, @Nullable Object requestBody, @Nonnull Class<RESP> requestClass) {
         return new RequestBuilder<>(url, HttpMethod.PATCH, requestBody, requestClass);
     }
 
-    public <RESP> RequestBuilder<RESP> put(@Nonnull String url, @Nonnull Object requestBody, @Nonnull Class<RESP> requestClass) {
+    public <RESP> RequestBuilder<RESP> put(@Nonnull String url, @Nullable Object requestBody, @Nonnull Class<RESP> requestClass) {
         return new RequestBuilder<>(url, HttpMethod.PUT, requestBody, requestClass);
     }
 
