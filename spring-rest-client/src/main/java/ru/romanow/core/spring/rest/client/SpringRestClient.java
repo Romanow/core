@@ -36,7 +36,7 @@ import static ru.romanow.core.spring.rest.client.utils.JsonSerializer.fromJson;
 public class SpringRestClient {
     private static final Logger logger = LoggerFactory.getLogger(SpringRestClient.class);
 
-    private static final int DEFAULT_REQUEST_TIMEOUT = 3000;
+    private static final int DEFAULT_REQUEST_TIMEOUT = 60_000;
 
     private final RestTemplate restTemplate;
 

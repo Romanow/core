@@ -41,10 +41,10 @@ import static ru.romanow.core.rest.client.utils.JsonSerializer.toJson;
 public class RestClient {
     private static final Logger logger = LoggerFactory.getLogger(RestClient.class);
 
-    private static final int DEFAULT_REQUEST_TIMEOUT = 3000;
-    private static final int SOCKET_TIMEOUT = 300;
-    private static final int CONNECTION_TIMEOUT = 100;
-    private static final int MAX_CONNECTIONS = 100;
+    private static final int DEFAULT_REQUEST_TIMEOUT = 60_000;
+    private static final int SOCKET_TIMEOUT = 3000;
+    private static final int CONNECTION_TIMEOUT = 1000;
+    private static final int MAX_CONNECTIONS = 200;
 
     CloseableHttpAsyncClient build() {
         RequestConfig requestConfig = RequestConfig
