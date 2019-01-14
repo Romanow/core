@@ -267,7 +267,7 @@ public class RestClientTest {
 
         final long duration = System.currentTimeMillis() - start;
 
-        if (duration > 3 * 1000) {
+        if (duration > 5 * 1000) {
             fail("Timeout not working");
         }
         assertTrue(response.isPresent());
