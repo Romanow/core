@@ -30,4 +30,9 @@ public abstract class HttpStatusBasedException
     public Object getBody() {
         return body;
     }
+
+    @SuppressWarnings("unchecked")
+    public <T> T getBody(Class<T> cls) {
+        return (T)body;
+    }
 }
