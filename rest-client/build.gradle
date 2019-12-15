@@ -1,5 +1,3 @@
-version = "${restClientVersion}"
-
 dependencies {
     compile "org.apache.httpcomponents:httpasyncclient:${apacheHttpClient}"
     compile "com.google.code.gson:gson:${gsonVersion}"

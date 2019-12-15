@@ -1,8 +1,0 @@
-build:
-  stage: build
-  image: java:8
-  cache:
-    paths:
-      - .gradle
-  script:
-    - ./gradlew clean build

@@ -1,39 +1,22 @@
-buildscript {
-    repositories {
-        mavenCentral()
-        maven {
-            url "https://plugins.gradle.org/m2/"
-        }
-    }
-    dependencies {
-        classpath "me.champeau.gradle:jmh-gradle-plugin:${jmhVersion}"
-    }
+plugins {
+    id "me.champeau.gradle.jmh" version "0.5.0" apply false
 }
 
 configure(subprojects) { project ->
     apply plugin: 'java'
     apply plugin: 'idea'
-    apply plugin: 'maven-publish'
     apply from: '../libraries.gradle'
 
     buildDir = "build"
     group 'ru.romanow.core'
 
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
+    sourceCompatibility = 1.11
+    targetCompatibility = 1.11
 
     idea {
         module {
             downloadJavadoc = true
             downloadSources = true
-        }
-    }
-
-    publishing {
-        publications {
-            mavenJava(MavenPublication) {
-                from components.java
-            }
         }
     }
 

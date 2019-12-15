@@ -1,5 +1,3 @@
-version = "${springRestClientVersion}"
-
 dependencies {
     compile "org.springframework:spring-web:${springVersion}"
     compile "com.google.code.gson:gson:${gsonVersion}"

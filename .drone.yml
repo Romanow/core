@@ -1,0 +1,20 @@
+---
+kind: pipeline
+type: docker
+name: default
+
+steps:
+  - name: build
+    image: gradle:5.6-jdk11
+    commands:
+      - gradle clean build
+
+  - name: publish
+    image: gradle:5.6-jdk11
+    commands:
+      - gradle uploadBintray
+    trigger:
+      branch:
+        - master
+      event:
+        - push
