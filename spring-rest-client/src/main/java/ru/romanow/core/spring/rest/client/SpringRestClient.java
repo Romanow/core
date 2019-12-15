@@ -76,7 +76,8 @@ public class SpringRestClient {
         private Class<RESP> responseClass;
 
         private Supplier<Optional<RESP>> defaultResponse;
-        private Map<Integer, Class> errorResponseClass;
+        private Map<Integer, Class<?>> errorResponseClass;
+        private Class<?> commonErrorResponseClass;
 
         private boolean processClientExceptions;
         private boolean processServerExceptions;
@@ -130,6 +131,12 @@ public class SpringRestClient {
         @Nonnull
         public RequestBuilder<RESP> errorResponseClass(int statusCode, Class<?> errorResponseClass) {
             this.errorResponseClass.put(statusCode, errorResponseClass);
+            return this;
+        }
+
+        @Nonnull
+        public RequestBuilder<RESP> commonErrorResponseClass(Class<?> errorResponseClass) {
+            this.commonErrorResponseClass = errorResponseClass;
             return this;
         }
 
@@ -315,6 +322,8 @@ public class SpringRestClient {
                 if (this.errorResponseClass.containsKey(status)) {
                     final Class<?> cls = this.errorResponseClass.get(status);
                     return fromJson(response, cls);
+                } else if (commonErrorResponseClass != null) {
+                    return fromJson(response, commonErrorResponseClass);
                 }
                 return response;
             }
