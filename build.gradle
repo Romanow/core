@@ -1,14 +1,14 @@
 plugins {
+    id "com.jfrog.bintray" version "1.8.4" apply false
     id "me.champeau.gradle.jmh" version "0.5.0" apply false
 }
 
 configure(subprojects) { project ->
-    apply plugin: 'java'
-    apply plugin: 'idea'
-    apply from: '../libraries.gradle'
+    apply plugin: "java"
+    apply plugin: "idea"
+    apply from: "../libraries.gradle"
 
     buildDir = "build"
-    group 'ru.romanow.core'
 
     sourceCompatibility = 1.11
     targetCompatibility = 1.11
@@ -21,7 +21,7 @@ configure(subprojects) { project ->
     }
 
     jar {
-        archiveName =  "${project.name}.jar"
+        archiveFileName =  "${project.name}.jar"
     }
 
     repositories {

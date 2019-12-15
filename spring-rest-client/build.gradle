@@ -1,5 +1,29 @@
+apply plugin: "maven-publish"
+apply plugin: "com.jfrog.bintray"
+
+bintray {
+    user = System.getenv("BINTRAY_USER")
+    key = System.getenv("BINTRAY_TOKEN")
+    publish = true
+    publications = ["image"]
+    pkg {
+        repo = "core"
+        name = project.name
+    }
+}
+
+publishing {
+    publications {
+        image(MavenPublication) {
+            from components.java
+        }
+    }
+}
+
 dependencies {
-    compile "org.springframework:spring-web:${springVersion}"
+    compile ("org.springframework:spring-web:${springVersion}") {
+        exclude module: "spring-jcl"
+    }
     compile "com.google.code.gson:gson:${gsonVersion}"
 
     testCompileOnly "org.projectlombok:lombok:${lombokVersion}"

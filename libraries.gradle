@@ -7,6 +7,7 @@ ext {
     commonsLangVersion = "3.9"
     apacheHttpClient = "4.1.4"
     reactorNettyVersion = "0.9.2.RELEASE"
+    commonsLogginVersion = "1.2"
     slf4jVersion = "1.7.25"
 
     findBugsVersion = "3.0.1"

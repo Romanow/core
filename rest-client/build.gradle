@@ -1,6 +1,29 @@
+apply plugin: "maven-publish"
+apply plugin: "com.jfrog.bintray"
+
+bintray {
+    user = System.getenv("BINTRAY_USER")
+    key = System.getenv("BINTRAY_TOKEN")
+    publish = true
+    publications = ["image"]
+    pkg {
+        repo = "core"
+        name = project.name
+    }
+}
+
+publishing {
+    publications {
+        image(MavenPublication) {
+            from components.java
+        }
+    }
+}
+
 dependencies {
     compile "org.apache.httpcomponents:httpasyncclient:${apacheHttpClient}"
     compile "com.google.code.gson:gson:${gsonVersion}"
+    compile "commons-logging:commons-logging:${commonsLogginVersion}"
 
     testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
     testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"

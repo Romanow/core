@@ -1,3 +1,25 @@
+apply plugin: "maven-publish"
+apply plugin: "com.jfrog.bintray"
+
+bintray {
+    user = "ronin" // System.getenv("BINTRAY_USER")
+    key = "794b2d060a453ffc0fd1d6f715a59b4a480d4ca7" // System.getenv("BINTRAY_TOKEN")
+    publish = true
+    publications = ["image"]
+    pkg {
+        repo = "core"
+        name = project.name
+    }
+}
+
+publishing {
+    publications {
+        image(MavenPublication) {
+            from components.java
+        }
+    }
+}
+
 dependencies {
     compile "org.springframework:spring-web:${springVersion}"
     compile "org.springframework:spring-context:${springVersion}"

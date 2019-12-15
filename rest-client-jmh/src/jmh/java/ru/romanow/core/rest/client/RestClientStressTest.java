@@ -9,6 +9,7 @@ import ru.romanow.core.spring.rest.client.SpringRestClient;
 @Measurement(iterations = 10, time = 2)
 @Fork(value = 1, warmups = 1)
 public class RestClientStressTest {
+    private static final String TEST_URL = "http://example.com";
 
     @State(Scope.Benchmark)
     public static class RestClientState {
@@ -17,8 +18,7 @@ public class RestClientStressTest {
 
     @Benchmark
     public void testApacheRestClient(RestClientState state) {
-        final String url = "http://localhost";
-        state.restClient.get(url, Void.class).execute();
+        state.restClient.get(TEST_URL, Void.class).execute();
     }
 
     @State(Scope.Benchmark)
@@ -32,7 +32,6 @@ public class RestClientStressTest {
 
     @Benchmark
     public void testSpringRestClient(SpringRestClientState state) {
-        final String url = "http://localhost";
-        state.restClient.get(url, Void.class).execute();
+        state.restClient.get(TEST_URL, Void.class).execute();
     }
 }
